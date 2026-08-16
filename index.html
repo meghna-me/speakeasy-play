@@ -1,0 +1,1041 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Speakeasy</title>
+<meta name="description" content="A daily puzzle about learning a bartender's taste.">
+<style>
+  :root{
+    --bg:#14100f; --panel:#1d1917; --panel2:#262120; --line:#3a322f;
+    --ink:#f2ece4; --dim:#a89c92; --faint:#7a6f67;
+    --took:#c9a227; --slid:#9a6a5c; --mark:#e0b84a;
+    --brass:#d4a141;
+  }
+  /* Dark is the bar. A speakeasy in daylight is a different room, so the
+     system preference no longer flips it — light is a deliberate choice the
+     player makes and we remember, not something their OS decides for them. */
+  :root[data-theme="light"]{
+    --bg:#f4f0e8; --panel:#fffdf9; --panel2:#ebe5d9; --line:#d8cfbe;
+    --ink:#221d18; --dim:#6a6055; --faint:#918b7f;
+    --took:#8a6a12; --slid:#8a4a38; --mark:#7d5f12; --brass:#8a6a12;
+  }
+
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--bg); color:var(--ink);
+    font:16px/1.5 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    padding:14px 16px 28px; max-width:1060px; margin:0 auto;
+  }
+  h1{font-family:ui-serif,Georgia,serif;font-size:24px;letter-spacing:-.02em;margin:0}
+  .sub{color:var(--dim);font-size:13px;margin:2px 0 0}
+  .bar{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:12px}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:12px}
+
+  /* You cannot deduce from evidence you have to scroll to. The order you are
+     building on the left, every round she has judged on the right, both on
+     screen at the same time. */
+  .wrap{display:grid;grid-template-columns:minmax(0,1fr) 356px;gap:14px;align-items:start}
+  .wrap .panel{margin-bottom:0}
+  #examArea,#doneArea{max-width:560px;margin:0 auto}
+  @media (min-width:901px){
+    .rail{position:sticky;top:14px}
+    .ledger{max-height:calc(100vh - 96px);display:flex;flex-direction:column}
+    .ledger .logs{overflow-y:auto;min-height:0}
+  }
+  /* PHONE. The desktop rule is that you cannot deduce from evidence you have to
+     scroll to, and a single stack broke it again on a 375x667 screen: 864px of
+     content in 667px of glass, so the round you were building sat above the
+     fold and the ledger sat below it while you chose. Three savings, measured:
+     picker cells 96 -> 56px (120px), the legend hidden (80px), and the ledger
+     REORDERED to sit between the round and the picker, which saves nothing and
+     is the entire point. display:contents dissolves the bar panel so its
+     children become grid items and the ledger can slot in among them. */
+  @media (max-width:900px){
+    .wrap{grid-template-columns:1fr;gap:8px}
+    .wrap > main{display:contents}
+    #say{order:1} #tray{order:2} .rail{order:3} #picker{order:4}
+    #controls{order:5} #hint{order:6} #strip{order:7}
+    .legend{display:none}            /* names live on the reveal and in About */
+    .tray{min-height:clamp(64px,11vh,86px);gap:8px;padding:8px 10px 6px}
+    .picker{gap:6px;margin-top:0}
+    .pcell{min-height:clamp(48px,8.5vh,68px);padding:6px 3px 5px}
+    .ledger{padding:9px}
+    .ledger .logs{max-height:20vh;overflow-y:auto}
+    .logcol{min-height:0}
+    /* the column headings already say took and sent back, and the exam is
+       explained when it starts — neither sentence earns its height here */
+    #prompt,.ledger .sub{display:none}
+    #declare{padding:8px 14px}
+    .say{padding:8px 10px;font-size:14px;margin-bottom:0}
+    #hint{font-size:12px;margin-top:4px}
+  }
+  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  button,select,a.btn-quiet{font:inherit;color:var(--ink);background:var(--panel2);
+    border:1px solid var(--line);border-radius:10px;padding:10px 14px;cursor:pointer}
+  button:active{transform:translateY(1px)}
+  button:focus-visible,select:focus-visible,a:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+  .btn-go{background:var(--brass);border-color:var(--brass);color:#1a1409;font-weight:650}
+  .btn-yes{border-color:var(--took);color:var(--took);font-weight:600}
+  .btn-no{border-color:var(--slid);color:var(--slid);font-weight:600}
+  .btn-quiet{background:transparent;color:var(--dim);border-color:transparent;padding:6px 8px;font-size:13px;text-decoration:none}
+  .btn-quiet.icon{display:inline-flex;align-items:center;justify-content:center;padding:5px;line-height:0}
+  .btn-quiet.icon:hover{color:var(--brass)}
+  /* the ? carries a glyph rather than an svg, so it needs its line-height back */
+  #helpBtn,#helpX{line-height:1;padding:5px 9px;font-size:15px}
+
+  /* Know your bartender. Sized so the whole panel fits a 375x667 phone without
+     the reader scrolling past the fold to find the how-to-play list. */
+  dialog#help{border:1px solid var(--line);border-radius:14px;background:var(--panel);
+    color:var(--ink);padding:0;max-width:min(520px,calc(100vw - 28px));
+    max-height:min(86vh,760px);overflow:auto}
+  dialog#help::backdrop{background:rgba(0,0,0,.62)}
+  .helpbox{padding:16px 18px 18px}
+  .helphead{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:10px}
+  .helphead h2{font-family:ui-serif,Georgia,serif;font-size:19px;font-weight:600;margin:0;letter-spacing:-.01em}
+  #help p{margin:0 0 11px;font-size:14px;line-height:1.55}
+  #help p.sub{font-size:12.5px}
+  .helplab{color:var(--brass);font-size:12px !important;text-transform:uppercase;
+    letter-spacing:.07em;margin:16px 0 6px !important}
+  .helpex{margin:0 0 4px;padding-left:18px;list-style:none}
+  .helpex li{font-family:ui-serif,Georgia,serif;font-size:15px;color:var(--ink);
+    margin-bottom:5px;position:relative}
+  /* a hanging brass tick, so the examples read as her lines rather than as a
+     checklist of things to do */
+  .helpex li::before{content:"·";position:absolute;left:-14px;color:var(--brass);font-weight:700}
+  /* The only prose link in the game, and unstyled it fell back to the UA's
+     visited-purple, which is both off-palette and colour as the sole channel.
+     Same treatment as about.html: --ink text so it outranks the --dim sentence
+     around it, brass in the underline, and the underline is what says "link". */
+  #help a{color:var(--ink);text-decoration-color:var(--brass);text-underline-offset:3px;
+    transition:color .15s}
+  #help a:hover{color:var(--brass)}
+  #help a:focus-visible{outline:2px solid var(--brass);outline-offset:2px;border-radius:6px}
+  .helphow{margin:0;padding-left:19px;font-size:14px;line-height:1.55}
+  .helphow li{margin-bottom:8px}
+  .helphow li::marker{color:var(--brass);font-weight:600}
+  /* her two opening examples are evidence like any other, so they sit at the top
+     of the same ledger — marked as given rather than earned, not in a second box */
+  .given{border-bottom:1px dashed var(--line);padding-bottom:7px;margin-bottom:5px}
+  .given .lab{font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--faint);margin-bottom:2px}
+  .given .mini{min-height:40px;align-items:flex-end}
+
+  /* the bar top: glasses stand on a lit surface rather than floating in a box */
+  .tray{display:flex;gap:14px;align-items:flex-end;min-height:clamp(96px,15vh,132px);padding:11px 12px 8px;
+    border:1px solid var(--line);border-radius:12px;
+    background:
+      radial-gradient(120% 70% at 50% 100%, color-mix(in srgb,var(--brass) 15%,transparent), transparent 68%),
+      linear-gradient(var(--panel2), color-mix(in srgb,var(--panel2) 70%, var(--bg)));
+    box-shadow:inset 0 -1px 0 color-mix(in srgb,var(--brass) 30%,transparent)}
+  .tray.empty::after{content:"asking for nothing is a fair question";color:var(--faint);font-size:12px;align-self:center}
+  .picker{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+  .pcell{display:flex;align-items:flex-end;justify-content:center;min-height:clamp(74px,12vh,116px);padding:9px 4px 7px;
+    border:1px solid var(--line);border-radius:10px;cursor:pointer;
+    background:
+      radial-gradient(85% 55% at 50% 88%, color-mix(in srgb,var(--brass) 13%,transparent), transparent 72%),
+      var(--panel2);
+    box-shadow:inset 0 -1px 0 color-mix(in srgb,var(--brass) 22%,transparent);
+    transition:border-color .15s, box-shadow .15s, transform .12s}
+  .pcell:hover{border-color:var(--brass);
+    box-shadow:inset 0 -1px 0 var(--brass), 0 2px 12px color-mix(in srgb,var(--brass) 18%,transparent)}
+  .pcell:active{transform:translateY(1px)}
+  /* a little ground shadow so a glass reads as standing, not pasted on */
+  .tray .tok,.pcell .tok{filter:drop-shadow(0 2px 3px rgba(0,0,0,.45))}
+  :root[data-theme="light"] .tray .tok,:root[data-theme="light"] .pcell .tok{filter:drop-shadow(0 2px 3px rgba(60,45,20,.22))}
+  .legend{display:flex;gap:6px 14px;flex-wrap:wrap;align-items:flex-end;margin-top:10px}
+  .leg{display:flex;align-items:flex-end;gap:5px;font-size:11px;color:var(--dim)}
+  .mini{display:flex;gap:5px;align-items:flex-end}
+
+  /* the night's run, in the order you asked for it. The ledger groups by verdict,
+     which is what you want for comparing evidence but destroys sequence — and in
+     an inductive puzzle the order IS the argument. Marks only: no score, no par,
+     no number. It wraps rather than scrolls, so a padded night grows into a long
+     ugly run you can see all of, and it can never push the page sideways. */
+  /* this row costs 29px, and 680px of viewport was the documented floor for the
+     bar column — which it broke by 8px. Paid for here and at the picker floor. */
+  .strip{position:relative;display:flex;flex-wrap:wrap;gap:3px;margin-top:6px;min-height:19px}
+  /* colour is never the only channel: the underline style (none / dotted /
+     solid) separates the three states with colour removed entirely */
+  .sm{display:inline-block;font-size:13px;line-height:1.15;padding-bottom:1px;
+    border-bottom:2px solid transparent;cursor:default}
+  .sm.free{border-bottom-style:dotted;border-bottom-color:var(--faint)}
+  .sm.surprised{border-bottom-color:var(--mark)}
+  .sm:focus-visible{outline:2px solid var(--brass);outline-offset:1px;border-radius:3px}
+  /* anchored to the strip, not the mark, and capped at its width — a tooltip
+     that hangs off the right edge is a horizontal scrollbar */
+  .tip{position:absolute;left:0;bottom:calc(100% + 5px);z-index:3;max-width:100%;
+    background:var(--panel2);border:1px solid var(--line);color:var(--ink);
+    border-radius:8px;padding:5px 8px;font-size:11px;line-height:1.35;
+    pointer-events:none;visibility:hidden;opacity:0}
+  .sm:hover .tip,.sm:focus-visible .tip{visibility:visible;opacity:1}
+  .sm.a-mark{animation:markIn .34s cubic-bezier(.2,.9,.3,1.15) both}
+  @keyframes markIn{0%{opacity:0;transform:translateY(-4px) scale(.72)}100%{opacity:1;transform:none}}
+
+  .logs{display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:start}
+  .logcol{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:8px;min-height:72px}
+  .logcol h3{margin:0 0 5px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;font-weight:700}
+  .logcol .mini{flex-wrap:wrap}
+  .logcol.y{border-color:color-mix(in srgb,var(--took) 40%,var(--line))}
+  .logcol.n{border-color:color-mix(in srgb,var(--slid) 40%,var(--line))}
+  .logcol.y h3{color:var(--took)} .logcol.n h3{color:var(--slid)}
+  .entry{display:flex;align-items:center;gap:7px;padding:3px 0;border-bottom:1px solid var(--line)}
+  .entry:last-child{border-bottom:0}
+  /* the column already says what she did — this mark says only whether YOU knew */
+  .mk{font-size:11px;width:15px;text-align:center;font-weight:700;flex:0 0 auto}
+  .mk.hit{color:var(--mark)} .mk.miss{color:var(--dim);opacity:.7} .mk.free{color:var(--faint);opacity:.5;font-weight:400}
+
+  .say{padding:11px 13px;border-radius:10px;font-size:15px;margin-bottom:11px}
+  .say.y{background:color-mix(in srgb,var(--took) 13%,transparent);border:1px solid color-mix(in srgb,var(--took) 42%,transparent)}
+  .say.n{background:color-mix(in srgb,var(--slid) 13%,transparent);border:1px solid color-mix(in srgb,var(--slid) 42%,transparent)}
+  .say.i{background:color-mix(in srgb,var(--brass) 11%,transparent);border:1px solid color-mix(in srgb,var(--brass) 36%,transparent)}
+  .called{color:var(--mark);font-weight:600}
+
+  .headline{font-family:ui-serif,Georgia,serif;font-size:25px;margin:0 0 2px;letter-spacing:-.02em}
+  .card{background:var(--panel2);border:1px solid var(--line);border-radius:12px;
+    padding:18px 14px;text-align:center;margin:14px 0}
+  .card .num{font-size:11px;color:var(--dim);letter-spacing:.14em;text-transform:uppercase}
+  .card .glyphs{font-size:25px;letter-spacing:4px;margin:12px 0 10px;line-height:1.35;word-break:break-word}
+  .card .line{font-size:15px;font-weight:650;font-variant-numeric:tabular-nums}
+  .card .key{font-size:11px;color:var(--faint);margin-top:8px}
+  .reveal{font-family:ui-serif,Georgia,serif;font-size:18px;margin:0 0 6px}
+  .hidden{display:none !important}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.9em;
+    background:var(--panel2);padding:1px 5px;border-radius:4px}
+
+  .tok{flex:0 0 auto;cursor:pointer;display:block;overflow:visible}
+  .tok .liq{transform-box:fill-box;transform-origin:50% 100%}
+  .tok .srf,.tok .ice,.tok .spk,.tok .spk2{transform-box:fill-box;transform-origin:50% 50%}
+  .tok .gar{transform-box:fill-box;transform-origin:0% 100%}
+  .tok .spk,.tok .spk2{opacity:0}
+  .tok .bub{animation:bubRise 4.8s ease-in infinite}
+  .tok circle.bub:nth-of-type(2){animation-duration:5.9s;animation-delay:-2.1s}
+  .tok circle.bub:nth-of-type(3){animation-duration:6.6s;animation-delay:-3.9s}
+  .tok .ice{animation:iceBob 5.4s ease-in-out infinite}
+  .tok .shine{animation:shineSweep 7.5s ease-in-out infinite}
+  .tok.no-idle .bub,.tok.no-idle .ice,.tok.no-idle .shine{animation:none}
+  @keyframes bubRise{0%{opacity:0;transform:translateY(0) scale(.55)}
+    14%{opacity:.6}78%{opacity:.34}100%{opacity:0;transform:translateY(-9px) scale(1.1)}}
+  @keyframes iceBob{0%,100%{transform:none}50%{transform:translateY(-.9px) rotate(1.4deg)}}
+  @keyframes shineSweep{0%,70%,100%{opacity:.14}82%{opacity:.34}}
+  .tok.a-pour{animation:tokPour .62s cubic-bezier(.2,.9,.3,1.15) both}
+  .tok.a-pour .liq{animation:liqRise .62s cubic-bezier(.22,.75,.3,1) both}
+  .tok.a-pour .srf{animation:srfWob .62s ease-out .12s both}
+  .tok.a-pour .gar{animation:garSwing .82s cubic-bezier(.3,1.5,.5,1) both}
+  @keyframes tokPour{0%{transform:translateY(-7px) scale(.94);opacity:0}
+    45%{opacity:1}72%{transform:translateY(0) scale(1.05,.95)}100%{transform:none;opacity:1}}
+  @keyframes liqRise{0%{transform:translateY(60px)}72%{transform:translateY(-1.8px)}100%{transform:translateY(0)}}
+  @keyframes srfWob{0%{transform:scaleX(.7)}50%{transform:scaleX(1.06) scaleY(1.5)}100%{transform:none}}
+  @keyframes garSwing{0%{transform:rotate(-16deg)}58%{transform:rotate(7deg)}100%{transform:none}}
+  .tok.a-remove{animation:tokOut .34s cubic-bezier(.45,0,.85,.35) both}
+  .tok.a-remove .liq{animation:liqDrain .28s ease-in both}
+  @keyframes tokOut{0%{transform:none;opacity:1}28%{transform:translateY(-4px) rotate(-5deg)}
+    100%{transform:translateY(12px) rotate(11deg) scale(.66);opacity:0}}
+  @keyframes liqDrain{0%{transform:none}100%{transform:translateY(52px)}}
+  .tok.a-yes{animation:tokBob .9s cubic-bezier(.3,.9,.4,1) both}
+  .tok.a-yes .srf{animation:srfSettle .9s ease-out both}
+  .tok.a-yes .gar{animation:garNod .9s cubic-bezier(.3,1.3,.5,1) both}
+  .tok.a-yes .spk{animation:spark .8s ease-out .08s both}
+  .tok.a-yes .spk2{animation:spark .8s ease-out .26s both}
+  @keyframes tokBob{0%,100%{transform:none}20%{transform:translateY(-5px) scale(1.03,.97)}
+    46%{transform:translateY(0) scale(.97,1.04)}70%{transform:translateY(-2px) scale(1.01,.99)}}
+  @keyframes srfSettle{0%,100%{transform:none}28%{transform:translateY(1.3px) scaleY(1.35)}62%{transform:translateY(-.7px)}}
+  @keyframes garNod{0%,100%{transform:none}30%{transform:rotate(-11deg)}62%{transform:rotate(5deg)}}
+  @keyframes spark{0%{opacity:0;transform:scale(.2) rotate(-40deg)}
+    36%{opacity:1;transform:scale(1.15) rotate(0)}100%{opacity:0;transform:scale(.65) rotate(30deg)}}
+  .tok.a-no{animation:tokWob .8s ease-in-out both}
+  .tok.a-no .liq{animation:liqSlosh .8s ease-in-out both}
+  .tok.a-no .srf{animation:srfTilt .8s ease-in-out both}
+  .tok.a-no .gar{animation:garFlop .8s ease-in-out both}
+  .tok.a-no .bub{animation:fizz .4s ease-out 2}
+  @keyframes tokWob{0%,100%{transform:none}14%{transform:rotate(-6deg)}31%{transform:rotate(5deg)}
+    48%{transform:rotate(-3.4deg)}65%{transform:rotate(2deg)}82%{transform:rotate(-.8deg) scaleY(.97)}}
+  @keyframes liqSlosh{0%,100%{transform:none}18%{transform:translateX(1.7px) rotate(2.6deg)}
+    42%{transform:translateX(-1.5px) rotate(-2.1deg)}68%{transform:translateX(.7px) rotate(1deg)}}
+  @keyframes srfTilt{0%,100%{transform:none}20%{transform:rotate(4deg) scaleY(1.3)}
+    50%{transform:rotate(-3deg) scaleY(1.2)}}
+  @keyframes garFlop{0%,100%{transform:none}22%{transform:rotate(16deg)}52%{transform:rotate(-9deg)}76%{transform:rotate(4deg)}}
+  @keyframes fizz{0%{opacity:.55;transform:none}100%{opacity:0;transform:translateY(-11px) scale(1.7)}}
+  @media (prefers-reduced-motion: reduce){ .tok,.tok *,.sm{animation:none !important} }
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <div>
+    <h1>Speakeasy</h1>
+    <p class="sub" id="dayline"></p>
+  </div>
+  <div class="row">
+    <!-- Always here, warm-ups included. A new player has to work out the SHAPE
+         of the answer as well as the answer; this is the only place that says
+         what she can possibly care about, so hiding it until they had already
+         played was backwards. -->
+    <button class="btn-quiet icon" id="helpBtn" aria-label="How to play" title="How to play">?</button>
+    <button class="btn-quiet" id="skinBtn">skin</button>
+    <button class="btn-quiet icon" id="themeBtn" aria-label="Switch theme"></button>
+    <a class="btn-quiet hidden" id="aboutLink" href="about.html">about</a>
+  </div>
+</div>
+
+<div class="wrap" id="playArea">
+  <main class="panel">
+    <div id="say"></div>
+    <div class="tray empty" id="tray"></div>
+    <div class="picker" id="picker"></div>
+    <div class="row" style="margin-top:10px" id="controls"></div>
+    <p class="sub" id="hint" style="margin:9px 0 0"></p>
+    <div class="legend" id="legend"></div>
+    <div class="strip" id="strip" role="list" aria-label="Tonight's rounds, in the order you asked for them"></div>
+  </main>
+
+  <aside class="rail">
+    <div class="panel ledger">
+      <p class="sub" id="prompt" style="margin:0 0 9px"></p>
+      <p class="sub" id="standing" style="margin:0 0 8px;font-weight:600;color:var(--brass)"></p>
+      <div class="logs">
+        <div class="logcol y">
+          <h3 id="logYT"></h3>
+          <div class="given"><div class="lab">on the house</div><div class="mini" id="seedY"></div></div>
+          <div id="logY"></div>
+        </div>
+        <div class="logcol n">
+          <h3 id="logNT"></h3>
+          <div class="given"><div class="lab">on the house</div><div class="mini" id="seedN"></div></div>
+          <div id="logN"></div>
+        </div>
+      </div>
+      <button class="btn-go" id="declare" style="width:100%;margin-top:10px">I know what she likes</button>
+      <p class="sub" style="margin:7px 0 0">She'll test you on four rounds you haven't seen.</p>
+    </div>
+  </aside>
+</div>
+
+<div id="examArea" class="hidden">
+  <div class="panel">
+    <div class="say i"><strong>Last orders.</strong> No help from here. Will she take these?</div>
+    <div id="examBody"></div>
+  </div>
+</div>
+
+<div id="doneArea" class="hidden"><div class="panel" id="doneBody"></div></div>
+
+<!-- Know your bartender. A native <dialog> so ESC, the focus trap and the
+     backdrop come for free rather than being re-implemented badly.
+
+     What it is for, precisely: Wordle tells you the answer is a five-letter
+     word you already know, and that bound is most of what makes it feel fair.
+     Measured, the search here is SMALLER than Wordle's — about 4 bits against
+     11 — but nothing on screen says what she can possibly care about, so the
+     player has to invent the candidates as well as choose between them. The
+     first paragraph below is that bound. It is true of every rule in the game
+     and gives away no individual one.
+
+     The three examples are illustration, not content: each is chosen to be a
+     shape the library can express but no shipped rule uses, and check-rules.mjs
+     asserts none of them collides with a reveal sentence. -->
+<dialog id="help" aria-labelledby="helpTitle">
+  <div class="helpbox">
+    <div class="helphead">
+      <h2 id="helpTitle">Know your bartender</h2>
+      <button class="btn-quiet icon" id="helpX" aria-label="Close">✕</button>
+    </div>
+
+    <p>She has a rule tonight. She will not tell you what it is — she will just
+      take what she likes and slide the rest back.</p>
+
+    <p><strong>She only ever cares about four things:</strong> how many drinks
+      you order, their colours, their sizes, and the order they come in. That's
+      the whole of it. Nothing about the day, nothing about you, nothing she
+      hasn't already shown you.</p>
+
+    <p class="helplab">So a house rule sounds like</p>
+    <ul class="helpex">
+      <li>“There are exactly three drinks.”</li>
+      <li>“The smallest glass comes last.”</li>
+      <li>“There's more than one colour in it.”</li>
+    </ul>
+    <p class="sub">Not tonight's — she'd never make it that easy.</p>
+
+    <p class="helplab">How a night goes</p>
+    <ol class="helphow">
+      <li><strong>Order a round.</strong> Anything. She takes it or she doesn't,
+        and either way you've learned something.</li>
+      <li><strong>Then call it first.</strong> Say what she'll do before you
+        ask. Being wrong is the good part — that's where the rule shows.</li>
+      <li><strong>Say you've got her.</strong> She'll put four rounds in front
+        of you. Read her right on all four and the night is yours.</li>
+    </ol>
+
+    <p class="sub" style="margin-top:12px">Stuck? <strong>Ask the regular</strong> —
+      he's been drinking here longer than you. <a href="about.html">Why she keeps
+      refusing perfectly good drinks →</a></p>
+  </div>
+</dialog>
+
+<script src="skins.js"></script>
+<script src="rules.js"></script>
+<script src="hypotheses.js"></script>
+<script src="engine.js"></script>
+<script>
+"use strict";
+const E = ENGINE;
+
+/* ---------- persistence ---------- */
+const STORE = "speakeasy.v1";
+const load = () => { try { return JSON.parse(localStorage.getItem(STORE)) || {}; } catch { return {}; } };
+const save = d => { try { localStorage.setItem(STORE, JSON.stringify(d)); } catch {} };
+
+let db = load();
+db.sessions = db.sessions || {};     // keyed by puzzle id — resumable
+db.times    = db.times || [];        // every completed session's duration and probe count
+db.skin     = db.skin || "cocktails";
+
+/* ---------- which puzzle ---------- */
+/* The engine decides what counts as a warm-up and what order they ramp in — it
+   consults tier as well as the flag, so a hard idea cannot be a warm-up. */
+const STARTERS = E.starters(RULES);
+const todayISO = new Date().toISOString().slice(0, 10);
+
+/* A newcomer plays two short ones, then joins today's daily. No tutorial to
+   skip past — the starters ARE the teaching, because people don't read. */
+function currentRule() {
+  const done = db.sessions;
+  for (const s of STARTERS) if (!(done[s.n] && done[s.n].phase === "done")) return s;
+  return E.dailyRule(todayISO, RULES);
+}
+
+let rule = currentRule();
+let session = db.sessions[rule.n] && db.sessions[rule.n].phase !== "done"
+  ? db.sessions[rule.n] : E.newSession(rule, Date.now());
+
+let tray = [], poured = -1, busy = false, said = null;
+
+const skin = () => SKINS[db.skin];
+const CL = i => skin().cols[i].name;
+const HX = i => skin().cols[i].hex;
+const SZ = i => skin().sizes[i];
+const $  = id => document.getElementById(id);
+const SCALE = { tray: 1.75, pick: 1.45, mini: .8, log: .7, leg: .62 };
+/* the player's frame, not hers: green is a call you got right, amber is one she
+   caught you out on, grey is a free opener with no call to get right */
+const GLYPHS = { called: "🟩", surprised: "🟨", free: "⬜", failed: "❌" };
+const MARK_LABEL = { called: "you called it", surprised: "she surprised you", free: "on the house" };
+
+/* Lights up / lights down, drawn rather than spelled. currentColor so it
+   inherits the quiet-button colour and needs no palette entry of its own. */
+const SUN = `<svg viewBox="0 0 20 20" width="17" height="17" aria-hidden="true" fill="none"
+  stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="10" cy="10" r="3.6"/>
+  <path d="M10 1.6v2M10 16.4v2M1.6 10h2M16.4 10h2M4.1 4.1l1.4 1.4M14.5 14.5l1.4 1.4M15.9 4.1l-1.4 1.4M5.5 14.5l-1.4 1.4"/></svg>`;
+const MOON = `<svg viewBox="0 0 20 20" width="17" height="17" aria-hidden="true" fill="none"
+  stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M16.2 12.4A7 7 0 0 1 7.6 3.8a7 7 0 1 0 8.6 8.6z"/></svg>`;
+/* two presentation tables over the engine's mark names — the encoding itself
+   lives in E.shareMarks and is never rewritten here */
+
+/* Fitting on one screen is the point, so the two tallest elements give way on a
+   short viewport. Ratios between the three glass sizes are untouched — size is
+   a game attribute and has to stay ordinally obvious at every scale. */
+const BASE = { tray: 1.75, pick: 1.45 };
+function fitScales() {
+  const h = window.innerHeight, w = window.innerWidth;
+  const kh = Math.max(.68, Math.min(1, (h - 250) / 600));
+  /* A phone stacks a third view in — the ledger sits between the round and the
+     picker — so the glasses have to give way on WIDTH as well as height, or a
+     56px cell gets a 60px glass in it. */
+  const kw = w <= 900 ? Math.max(.42, Math.min(1, (w - 190) / 430)) : 1;
+  const k = Math.min(kh, kw);
+  SCALE.tray = +(BASE.tray * k).toFixed(3);
+  SCALE.pick = +(BASE.pick * k).toFixed(3);
+  /* the ledger is reference, not the main event: smaller on a phone, but the
+     1 : 1.5 : 2 height ratio is untouched, so size stays ordinally obvious */
+  SCALE.log  = w <= 900 ? .55 : .7;
+}
+fitScales();
+
+/* rules.js reveal text calls these */
+window.U = () => "round";
+
+/* ---------- drawing ---------- */
+const NS = "http://www.w3.org/2000/svg";
+let uid = 0;
+/* dark unless the player chose otherwise — the OS no longer gets a vote */
+const isLight = () => document.documentElement.getAttribute("data-theme") === "light";
+const lum = hex => {
+  const c = [1,3,5].map(i => parseInt(hex.slice(i,i+2),16)/255)
+                   .map(v => v <= .04045 ? v/12.92 : Math.pow((v+.055)/1.055, 2.4));
+  return .2126*c[0] + .7152*c[1] + .0722*c[2];
+};
+
+function tok(d, scale, calm) {
+  const sh = SHAPES[db.skin][d.s], id = ++uid, light = isLight(), hex = HX(d.c);
+  const svg = document.createElementNS(NS, "svg");
+  svg.setAttribute("viewBox", `0 0 ${sh.w} ${sh.h}`);
+  svg.setAttribute("width", (sh.w*scale).toFixed(1));
+  svg.setAttribute("height", (sh.h*scale).toFixed(1));
+  svg.setAttribute("class", "tok");
+
+  const tex = TEXTURES[d.c];
+  let defs = "", fill = hex;
+  if (tex) {
+    const ink = lum(hex) > .35 ? "rgba(0,0,0,.34)" : "rgba(255,255,255,.44)";
+    defs = `<defs><pattern id="tx${id}" width="${tex.w}" height="${tex.h}"
+      patternUnits="userSpaceOnUse" patternTransform="rotate(${tex.rot})">
+      <rect width="${tex.w}" height="${tex.h}" fill="${hex}"/>
+      ${tex.body.replace(/\{T\}/g, ink)}</pattern></defs>`;
+    fill = `url(#tx${id})`;
+  }
+  svg.innerHTML = (defs + sh.svg
+    .replace(/\{C\}/g, fill)
+    .replace(/\{S\}/g, light ? "rgba(20,16,14,.46)" : "rgba(255,255,255,.6)")
+    .replace(/\{G\}/g, light ? "rgba(20,16,14,.15)" : "rgba(255,255,255,.22)"))
+    /* Ids are authored per SHAPE, so every copy of that shape on the page
+       carries the same one and a row of four tokens would resolve every
+       url(#…) to the first one's clip path. Suffix each authored id, and each
+       reference to it, with this instance's number.
+
+       Generic on purpose. This used to match /\bck[A-Z]\b/ — the prefix the
+       two original skins happened to use — so it silently did nothing the
+       moment a new skin authored an id under any other prefix, and the failure
+       looks like a rendering glitch rather than a naming bug. */
+    .replace(/\bid="([A-Za-z][\w-]*)"/g, (_, n) => `id="${n}${id}"`)
+    .replace(/url\(#([A-Za-z][\w-]*)\)/g, (_, n) => `url(#${n}${id})`);
+  if (calm) svg.classList.add("no-idle");
+  const t = document.createElementNS(NS, "title");
+  t.textContent = `${SZ(d.s)} · ${CL(d.c)}`;
+  svg.appendChild(t);
+  return svg;
+}
+
+function renderMini(el, round, sc = SCALE.mini) {
+  el.innerHTML = "";
+  if (!round.length) { el.innerHTML = `<span style="color:var(--faint);font-size:12px">nothing at all</span>`; return; }
+  round.forEach(d => el.appendChild(tok(d, sc, true)));
+}
+
+/* ---------- screens ---------- */
+function renderHead() {
+  const starter = E.isStarter(rule);
+  /* Par sits here rather than in the hint line so it is on screen before the
+     first round, and stays there. The engine is the only thing that knows what
+     par is — starters come back null and the line simply has no par in it. */
+  const par = E.score(session, rule).par;
+  $("dayline").textContent = starter
+    ? `Warming up — ${STARTERS.indexOf(rule)+1} of ${STARTERS.length}`
+    : `${todayISO} · house rule #${rule.n}${par === null ? "" : ` · par ${par}`}`;
+  /* the column headings already say what she did with each one — this line only
+     has to say what the list IS. Instructions live under the picker instead. */
+  $("prompt").textContent = "Everything she's judged tonight. The first two were on the house.";
+  renderMini($("seedY"), rule.seedYes);
+  renderMini($("seedN"), rule.seedNo);
+}
+
+function renderTray() {
+  const el = $("tray");
+  el.innerHTML = "";
+  el.classList.toggle("empty", !tray.length);
+  tray.forEach((d, i) => {
+    const n = tok(d, SCALE.tray);
+    if (i === poured) n.classList.add("a-pour");
+    n.onclick = () => removeAt(i);
+    el.appendChild(n);
+  });
+  poured = -1;
+}
+
+function removeAt(i) {
+  if (busy) return;
+  const n = $("tray").children[i];
+  if (!n) return;
+  n.classList.add("a-remove");
+  setTimeout(() => { tray.splice(i, 1); renderTray(); renderControls(); }, 300);
+}
+
+/* The picker offers exactly the drinks the rule's space holds, and no others —
+   otherwise a tutorial player can order something the puzzle cannot contain, and
+   the bartender's verdict on it means nothing. Which drinks exist is the
+   engine's answer, not the page's; the page only lays them out. One row per
+   colour, one column per size, and the grid narrows with the space so a
+   two-drink bar does not stretch two cells across the whole counter. */
+function renderPicker() {
+  const el = $("picker");
+  const space = E.roundSpace(rule);
+  el.innerHTML = "";
+  el.style.gridTemplateColumns = `repeat(${space.sizes.length}, 1fr)`;
+  el.style.maxWidth = space.sizes.length < 3 ? `${(100 * space.sizes.length / 3).toFixed(1)}%` : "";
+  space.cols.forEach(c => space.sizes.forEach(s => {
+    const col = skin().cols[c], sz = skin().sizes[s];
+    const cell = document.createElement("div");
+    cell.className = "pcell";
+    cell.title = `${sz} ${col.name}`;
+    const t = tok({ c, s }, SCALE.pick, true);
+    t.style.pointerEvents = "none";
+    cell.appendChild(t);
+    cell.onclick = () => {
+      if (busy || tray.length >= E.MAX_DRINKS) return;
+      tray.push({ c, s });
+      poured = tray.length - 1;
+      renderTray(); renderControls();
+    };
+    el.appendChild(cell);
+  }));
+  const lg = $("legend");
+  lg.innerHTML = "";
+  const item = (d, label, sc) => {
+    const w = document.createElement("div");
+    w.className = "leg";
+    w.appendChild(tok(d, sc, true));
+    w.appendChild(document.createTextNode(label));
+    return w;
+  };
+  /* the legend names what the picker offers — same space, or it teaches a drink
+     that is not on the bar tonight */
+  space.cols.forEach(c => lg.appendChild(item({ c, s: space.sizes[0] }, skin().cols[c].name, SCALE.leg)));
+  space.sizes.forEach(s => lg.appendChild(item({ c: space.cols[0], s }, skin().sizes[s], SCALE.leg)));
+}
+
+function renderControls() {
+  const el = $("controls");
+  el.innerHTML = "";
+  /* the About page answers "why does she keep refusing perfectly good drinks?"
+     — there is no referent for that question before the first round, so the link
+     appears only once one exists. Visibility only: no derivation enters here. */
+  $("aboutLink").classList.toggle("hidden", !(db.times.length || session.probes.length));
+
+  const clear = document.createElement("button");
+  clear.className = "btn-quiet"; clear.textContent = "Clear";
+  clear.onclick = () => { if (!busy) { tray = []; renderTray(); renderControls(); } };
+
+  /* The regular suggests a round, never a rule. The player still calls it. */
+  const ask = document.createElement("button");
+  ask.className = "btn-quiet"; ask.textContent = "Ask the regular";
+  ask.title = "He'll point you at something worth trying. Costs you a round.";
+  ask.onclick = () => {
+    if (busy) return;
+    /* A whole CLASS first, a round only as a fallback. Probing at random costs
+       about par, so choosing the round was never the hard part — holding the
+       theories is. "She isn't watching colour" kills every colour theory the
+       player is carrying, which is the thing they cannot do for themselves. */
+    const cls = E.classHint(session, rule, HYPOTHESES);
+    if (cls) {
+      session = E.takeHint(session, Date.now());
+      persist(); renderControls(); renderStanding();
+      $("hint").textContent = {
+        colour: "The regular leans over: “Don't bother with colour. Not tonight.”",
+        size:   "The regular leans over: “It's not size. She'd take any of them.”",
+        order:  "The regular leans over: “Order 'em however you like. She's not fussed.”"
+      }[cls.attr];
+      return;
+    }
+    const r = E.suggestProbe(session, rule, HYPOTHESES);
+    if (!r) { $("hint").textContent = "The regular shrugs. He's got nothing that'd help you."; return; }
+    session = E.takeHint(session, Date.now());
+    tray = r.map(d => ({ ...d }));
+    poured = tray.length - 1;
+    persist(); renderTray(); renderControls(); renderStanding();
+    $("hint").textContent = r.length
+      ? "“Try this one.” Ordering it is still on you — so is calling it."
+      : "“Ask her for nothing,” he says. “Go on. See what she does.”";
+  };
+
+  let giveUpBtn = null;
+  /* The way out. Never offered from the first screen — that is a standing
+     invitation to stop thinking — only once the player is measurably stuck:
+     past par with room to spare, or already told that a theory does not fit. */
+  if (E.stuck(session, rule)) {
+    const out = document.createElement("button");
+    out.className = "btn-quiet"; out.textContent = "Give up and see";
+    out.onclick = () => {
+      if (busy) return;
+      session = E.giveUp(session, Date.now());
+      persist(); renderDone();
+    };
+    giveUpBtn = out;
+  }
+
+  /* Always available once a round has been ordered, and it reveals nothing —
+     it just clears the night and deals the same puzzle again. Being unable to
+     abandon a puzzle you cannot solve is the most frustrating state the game
+     can put someone in, and until now there was no way out of it at all. */
+  let overBtn = null;
+  if (session.probes.length) {
+    const over = document.createElement("button");
+    over.className = "btn-quiet"; over.textContent = "Start over";
+    over.title = "Clear the night and order again from the top. Same puzzle.";
+    over.onclick = () => {
+      if (busy) return;
+      session = E.newSession(rule, Date.now());
+      tray = []; said = null; stripSeen = 0;
+      persist(); renderAll();
+    };
+    overBtn = over;
+  }
+
+  if (!E.callRequired(session)) {
+    const go = document.createElement("button");
+    go.className = "btn-go"; go.textContent = "Order it";
+    go.onclick = () => serve(null);
+    el.append(go, ask, clear);
+    if (overBtn) el.appendChild(overBtn);
+    if (giveUpBtn) el.appendChild(giveUpBtn);
+    /* Say nothing about calling yet — the player has not met it. Teach it at
+       the moment it starts, and let the two buttons do the explaining. */
+    $("hint").textContent = session.probes.length === 0
+      ? "Order whatever you fancy — she'll let you know."
+      : "One more on the house.";
+  } else {
+    const y = document.createElement("button");
+    y.className = "btn-yes"; y.textContent = "She'll take it";
+    y.onclick = () => serve(true);
+    const n = document.createElement("button");
+    n.className = "btn-no"; n.textContent = "She'll send it back";
+    n.onclick = () => serve(false);
+    el.append(y, n, ask, clear);
+    if (overBtn) el.appendChild(overBtn);
+    if (giveUpBtn) el.appendChild(giveUpBtn);
+    $("hint").textContent = nudge();
+  }
+}
+
+/* live and truthful — never an invented statistic */
+function nudge() {
+  const bets = session.probes.filter(p => p.call !== null);
+  const s = E.score(session, rule);
+  /* the first time the call is required, explain it once and only once */
+  if (!bets.length)
+    return "Now call it first — what's she going to do with this one?";
+  if (bets.length >= 3 && bets.every(p => p.call === true))
+    return "You've only ever expected a yes. Try to be wrong on purpose — it's quicker.";
+  if (session.probes.length >= 4 && !session.probes.some(p => !p.accepted))
+    return "She's taken everything so far. See if you can get one sent back.";
+  /* Well past the line — and par is a lower bound, so this is a nudge toward a
+     method, never a scolding and never a cap on how long you may keep going. */
+  if (s.par !== null && s.toPar > 6)
+    return "Long night. Take one she liked and change a single thing about it.";
+  return s.par === null ? "" : `Par's ${s.par}. You're on ${s.effective}.`;
+}
+
+function serve(call) {
+  if (busy) return;
+  const round = tray.slice();
+  const accepted = rule.fn(round);
+  session = E.probe(session, rule, round, call, Date.now());
+  said = { accepted, call };
+  renderSay();
+  const glasses = [...$("tray").children];
+  glasses.forEach(g => g.classList.add(accepted ? "a-yes" : "a-no"));
+  busy = glasses.length > 0;
+  const settle = () => {
+    tray = []; busy = false;
+    persist(); renderTray(); renderControls(); renderLog(); renderStrip(); renderStanding();
+  };
+  glasses.length ? setTimeout(settle, accepted ? 880 : 780) : settle();
+}
+
+function renderSay() {
+  if (!said) { $("say").innerHTML = ""; return; }
+  const { accepted, call } = said;
+  const line = accepted ? "She takes it." : "She slides it back.";
+  const extra = call === null ? ""
+    : ` <span class="called">${call === accepted ? "You called it." : "You expected the opposite."}</span>`;
+  $("say").innerHTML = `<div class="say ${accepted ? "y" : "n"}"><strong>${line}</strong>${extra}</div>`;
+}
+
+function renderLog() {
+  const taken = session.probes.filter(p => p.accepted).length;
+  $("logYT").textContent = `She took (${taken})`;
+  $("logNT").textContent = `Sent back (${session.probes.length - taken})`;
+  const col = { true: $("logY"), false: $("logN") };
+  col[true].innerHTML = ""; col[false].innerHTML = "";
+  session.probes.forEach(p => {
+    const row = document.createElement("div");
+    row.className = "entry";
+    const m = document.createElement("div");
+    if (p.call === null) { m.className = "mk free"; m.textContent = "–"; m.title = "free round"; }
+    else if (p.call === p.accepted) { m.className = "mk hit"; m.textContent = "✓"; m.title = "you called it"; }
+    else { m.className = "mk miss"; m.textContent = "✗"; m.title = "she surprised you"; }
+    const mini = document.createElement("div");
+    mini.className = "mini";
+    renderMini(mini, p.round, SCALE.log);
+    row.append(m, mini);
+    col[p.accepted].appendChild(row);
+  });
+}
+
+/* One mark per probe, in the order you asked for them, taken straight from the
+   engine's share-mark derivation — same vocabulary as the end card, none of the
+   card: no score, no par, no puzzle number, nothing she has not already shown
+   you. Hover or focus a mark to get the round back. */
+let stripSeen = 0;
+function renderStrip() {
+  const el = $("strip");
+  el.innerHTML = "";
+  const marks = E.shareMarks(session);
+  /* animate only the mark that was just added — never on a resumed session, a
+     skin swap or a theme swap, which re-render the same marks */
+  const grew = marks.length === stripSeen + 1;
+  marks.forEach((m, i) => {
+    const round = session.probes[i].round;
+    const what = round.length
+      ? round.map(d => `${SZ(d.s)} ${CL(d.c)}`).join(", ")
+      : "nothing at all";
+    const s = document.createElement("span");
+    s.className = `sm ${m}`;
+    s.tabIndex = 0;
+    s.setAttribute("role", "listitem");
+    s.textContent = GLYPHS[m];
+    /* the glyph is colour; the label is the same fact in words, for anyone who
+       is not getting it from the colour */
+    s.setAttribute("aria-label", `Round ${i + 1}, ${MARK_LABEL[m]} — ${what}`);
+    const tip = document.createElement("span");
+    tip.className = "tip";
+    tip.textContent = `Round ${i + 1} · ${what}`;
+    s.appendChild(tip);
+    if (grew && i === marks.length - 1) s.classList.add("a-mark");
+    el.appendChild(s);
+  });
+  stripSeen = marks.length;
+}
+
+/* ---------- exam ---------- */
+function startExam() {
+  if (busy) return;
+  /* the engine seeds its own exam — the page choosing it was the exploit */
+  session = E.declare(session, rule, HYPOTHESES, null, Date.now());
+  persist(); show("exam"); renderExam();
+}
+
+function renderExam() {
+  const el = $("examBody");
+  el.innerHTML = "";
+  session.exam.forEach((q, i) => {
+    const w = document.createElement("div");
+    w.className = "panel"; w.style.margin = "0 0 10px";
+    const m = document.createElement("div"); m.className = "mini";
+    renderMini(m, q.round);
+    w.appendChild(m);
+    const r = document.createElement("div");
+    r.className = "row"; r.style.marginTop = "9px";
+    if (q.answer === null) {
+      const y = document.createElement("button");
+      y.className = "btn-yes"; y.textContent = "Takes it";
+      y.onclick = () => { q.answer = true; renderExam(); };
+      const n = document.createElement("button");
+      n.className = "btn-no"; n.textContent = "Sends it back";
+      n.onclick = () => { q.answer = false; renderExam(); };
+      r.append(y, n);
+    } else {
+      const t = document.createElement("div");
+      t.className = "sub"; t.style.margin = "0";
+      t.textContent = q.answer ? "You said she takes it" : "You said she sends it back";
+      r.append(t);
+    }
+    w.appendChild(r);
+    el.appendChild(w);
+  });
+  if (session.exam.every(q => q.answer !== null)) {
+    const b = document.createElement("button");
+    b.className = "btn-go"; b.style.width = "100%"; b.textContent = "That's my answer";
+    b.onclick = () => finish(session.exam.map(q => q.answer));
+    el.appendChild(b);
+  }
+}
+
+function finish(answers) {
+  session = E.answerExam(session, answers, Date.now());
+  persist();
+  if (session.phase === "play") { renderFailed(); return; }
+  db.times.push({ rule: rule.n, ms: session.lastActiveAt - session.startedAt, probes: session.probes.length });
+  save(db);
+  renderDone();
+}
+
+function renderFailed() {
+  const ex = session.lastExam;
+  show("done");
+  $("doneBody").innerHTML = `
+    <div class="headline">Not yet.</div>
+    <!-- How many, never which. The exam is a covering construction, so at 3 of 4
+         the item named IS the round that separates the player's theory from hers
+         — handing it over after charging them for the attempt makes failing the
+         exam a cheaper hint than asking the regular for one. ex.missed stays in
+         the engine; it is the rendering that leaked. -->
+    <p class="sub" style="margin:0 0 12px">${ex.right} of ${ex.of}. She's not convinced.</p>
+    <div class="say i">Something else still fits everything you've seen. That's ${E.examCharge(session.failedExams)} rounds on your tab — back to the bar.${session.failedExams > 1 ? " She's less patient every time you try this." : ""}</div>
+    <button class="btn-go" id="back" style="width:100%">Another round</button>`;
+  $("back").onclick = () => { show("play"); renderAll(); };
+}
+
+function renderDone() {
+  const s = E.score(session, rule);
+  const marks = E.shareMarks(session);
+  const row = marks.map(m => GLYPHS[m]).join("");
+  const mins = Math.max(1, Math.round((session.lastActiveAt - session.startedAt) / 60000));
+  const text = E.shareText(session, rule, GLYPHS, "Speakeasy", mins);
+  const riv = E.nameRival(session, rule, HYPOTHESES);
+  const quit = !!session.gaveUp;
+
+  const avg = db.times.length > 1
+    ? Math.round(db.times.slice(0, -1).reduce((a, t) => a + t.probes, 0) / (db.times.length - 1)) : null;
+  const vsSelf = avg === null ? "" :
+    `<p class="sub" style="margin:0">${s.probes < avg ? `${avg - s.probes} rounds under your own average.`
+      : s.probes > avg ? `${s.probes - avg} over your own average.` : "Exactly your average."}</p>`;
+
+  const rivalLine = riv
+    ? `<p class="sub" style="margin:0 0 6px">You were drinking on a theory: <em>${riv.rival.text(skin().cols.map(c => c.name), skin().sizes)}</em>. One round would have told you: <span id="sep"></span></p>`
+    : `<p class="sub" style="margin:0 0 6px">Nothing else in the bar fitted your evidence. You had her pinned.</p>`;
+
+  /* the count already sits inside s.effective — say so rather than hide it */
+  const asked = s.hints
+    ? `<p class="sub" style="margin:0 0 6px">You asked the regular ${s.hints === 1 ? "once" : s.hints + " times"}, and it is counted in above.</p>`
+    : "";
+
+  const surprises = s.surprises.length
+    ? `She caught you out on round ${s.surprises.join(" and ")} — that's where you actually learned something.`
+    : `She never once surprised you, which usually means you only ordered what you were already sure of.`;
+
+  /* Golf: the line, then how far over or under it. The number is the engine's
+     (s.toPar, positive for over); this only puts words round it. Par is a
+     lower bound measured against a solver that holds every theory at once, so
+     over par is the normal night and is never phrased as a failure. */
+  const vsPar = s.par === null ? ""
+    : ` against a par of ${s.par} — ${s.toPar === 0 ? "level par"
+        : s.toPar > 0 ? `${s.toPar} over` : `${-s.toPar} under`}`;
+
+  /* A night given up is a FINISHED night, not a failed one. It is stated
+     plainly, it is never scolded, and it does not pretend to a par the player
+     just declined to be measured against. */
+  const fails = session.failedExams
+    ? ` ${GLYPHS.failed.repeat(session.failedExams)}` : "";
+  const line = quit
+    ? `Gave up · about ${mins} min`
+    : `${s.effective} rounds${s.par === null ? "" : ` · par ${s.par}`}` +
+      (session.lastExam ? ` · last orders ${session.lastExam.right}/${session.lastExam.of}` : "");
+
+  show("done");
+  $("doneBody").innerHTML = `
+    <div class="headline">${quit ? "She pours you one anyway." : "She knows you know."}</div>
+    <p class="sub" style="margin:0">${quit ? `You called it a night · about ${mins} min`
+        : `${s.effective} rounds${vsPar} · about ${mins} min`}</p>
+    <div class="card">
+      <div class="num">Speakeasy #${rule.n}</div>
+      <div class="glyphs">${row}${fails}</div>
+      <div class="line">${line}</div>
+      <div class="key">🟩 you called it · 🟨 she surprised you · ⬜ on the house${session.failedExams ? " · ❌ last orders missed" : ""}</div>
+    </div>
+    <button class="btn-go" id="copy" style="width:100%">Copy</button>
+    <div style="margin-top:18px">
+      <p class="reveal">Tonight she was pouring by this: ${rule.text()}</p>
+      ${rivalLine}
+      ${asked}
+      <p class="sub" style="margin:0 0 6px">${surprises}</p>
+      ${vsSelf}
+    </div>
+    <div class="row" style="margin-top:16px">
+      <button class="btn-quiet" id="next">${E.isStarter(rule) ? "Next" : "Play another"}</button>
+    </div>`;
+  if (riv) renderMini($("sep"), riv.separator);
+  $("copy").onclick = () => { navigator.clipboard?.writeText(text); $("copy").textContent = "Copied"; };
+  $("next").onclick = () => {
+    rule = currentRule();
+    session = E.newSession(rule, Date.now());
+    tray = []; said = null;
+    persist(); show("play"); renderAll();
+  };
+}
+
+/* ---------- plumbing ---------- */
+function show(which) {
+  $("playArea").classList.toggle("hidden", which !== "play");
+  $("examArea").classList.toggle("hidden", which !== "exam");
+  $("doneArea").classList.toggle("hidden", which !== "done");
+}
+function persist() { db.sessions[rule.n] = session; save(db); }
+/* the icon shows where you are going, not where you are — a moon means
+   "lights down from here", which is what the click does */
+function renderTheme() {
+  const light = isLight(), b = $("themeBtn");
+  b.innerHTML = light ? MOON : SUN;
+  b.setAttribute("aria-label", light ? "Switch to dark" : "Switch to light");
+  b.title = light ? "Lights down" : "Lights up";
+}
+
+/* The single most motivating signal the game has, and it was computed every
+   turn and discarded. "11 still fit" -> "3 still fit" is visible progress in a
+   game that otherwise gives none, and it answers the question players get
+   wrong most often: when to declare. It names no theory. */
+function renderStanding() {
+  const n = E.standing(session, rule, HYPOTHESES);
+  $("standing").textContent = session.phase !== "play" ? ""
+    : n === 1 ? "Only one theory still fits. Call it."
+    : `${n} theories still fit.`;
+}
+
+function renderAll() { renderTheme(); renderHead(); renderTray(); renderPicker(); renderControls(); renderLog(); renderStrip(); renderStanding(); renderSay(); }
+
+$("declare").onclick = startExam;
+$("skinBtn").onclick = () => {
+  const keys = Object.keys(SKINS);
+  db.skin = keys[(keys.indexOf(db.skin) + 1) % keys.length];
+  save(db); renderAll();
+  if (session.phase === "exam") renderExam();
+  if (session.phase === "done") renderDone();
+};
+const setTheme = t => {
+  document.documentElement.setAttribute("data-theme", t);
+  /* it never persisted, so the choice died on every reload and on the walk to
+     the About page. It matters more now that light is the deliberate one. */
+  db.theme = t; save(db);
+  renderAll();
+  if (session.phase === "exam") renderExam();
+  if (session.phase === "done") renderDone();
+};
+$("themeBtn").onclick = () => setTheme(isLight() ? "dark" : "light");
+
+/* Know your bartender. Opened only on request — never on load, never as a
+   first-run interruption. The tray is untouched, so an unserved round survives
+   opening and closing this. */
+$("helpBtn").onclick = () => $("help").showModal();
+$("helpX").onclick = () => $("help").close();
+/* <dialog> gives ESC and the focus trap; clicking the backdrop is the one
+   dismissal it does not, and the backdrop registers as a click on the dialog
+   itself rather than on anything inside it. */
+$("help").addEventListener("click", e => { if (e.target === $("help")) $("help").close(); });
+$("help").addEventListener("close", () => $("helpBtn").focus());
+
+/* re-draw at the new scale when the window changes height, but not mid-pour */
+let rz;
+addEventListener("resize", () => {
+  clearTimeout(rz);
+  rz = setTimeout(() => {
+    const before = `${SCALE.pick}|${SCALE.log}`;
+    fitScales();
+    /* crossing the 900px breakpoint changes the ledger scale too, so redraw it */
+    if (!busy && `${SCALE.pick}|${SCALE.log}` !== before && session.phase === "play") {
+      renderTray(); renderPicker(); renderLog(); renderHead();
+    }
+  }, 160);
+});
+
+/* First visit follows the operating system. After that the player's own choice
+   wins for good — they have told us something the OS only guessed at. */
+document.documentElement.setAttribute("data-theme",
+  db.theme || (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark"));
+
+/* ?rule=10 deals that puzzle instead of whatever the schedule says. For
+   playtesting: it names no rule and reveals nothing, it only skips the queue.
+   Resumes an existing session for that rule rather than restarting it. */
+const asked = Number(new URLSearchParams(location.search).get("rule"));
+if (asked && RULES.some(r => r.n === asked)) {
+  rule = RULES.find(r => r.n === asked);
+  session = db.sessions[rule.n] && db.sessions[rule.n].phase !== "done"
+    ? db.sessions[rule.n] : E.newSession(rule, Date.now());
+  tray = []; said = null;
+}
+
+renderAll();
+show(session.phase === "exam" ? "exam" : "play");
+if (session.phase === "exam") renderExam();
+</script>
+</body>
+</html>
