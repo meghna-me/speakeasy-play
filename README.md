@@ -1,8 +1,9 @@
 # Speakeasy
 
-A daily inductive-logic puzzle. A bartender has a hidden rule about what she
-will serve; you order rounds and work it out from what she takes and what she
-sends back.
+A daily inductive-logic puzzle. You are the bartender. A new customer sits down
+each night with a usual they will not describe — a hidden rule about what they
+will accept — and you work it out by pouring rounds and watching which ones they
+take and which they send back.
 
 **Play:** https://meghna-me.github.io/speakeasy-play/
 
@@ -13,6 +14,7 @@ This repository is the deployed site only. It is generated from the private
 development repo, which holds the engine tests, the authoring gates and the
 design record; do not edit these files here, they are overwritten on deploy.
 
-Every rule lives in `rules.js` and is readable by anyone who opens it. That is
-unavoidable for a static site and is an honour system, stated plainly rather
-than pretended otherwise.
+`rules.js` is packed rather than plain text. That is deterrence against a casual
+look — View Source no longer prints tonight's answer — and it is not protection:
+the predicates run in your browser, so anyone determined can still read them.
+Please play it straight.

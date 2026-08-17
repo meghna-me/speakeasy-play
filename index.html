@@ -3,8 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Speakeasy</title>
-<meta name="description" content="A daily puzzle about learning a bartender's taste.">
+<title>Speakeasy — a daily logic puzzle</title>
+<meta name="description" content="You're behind the bar. Tonight's customer has a usual and won't say what it is. Serve rounds, watch what comes back, work it out. A new customer every night.">
+<!-- Cards, and NO og:image. The deployed site makes zero network requests, so
+     an image would be the first one, and there is nothing to point it at. -->
+<meta property="og:title" content="Speakeasy — a daily logic puzzle">
+<meta property="og:description" content="A new customer every night, each with a usual they won't tell you. Serve rounds until you work out what it is.">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary">
 <style>
   :root{
     --bg:#14100f; --panel:#1d1917; --panel2:#262120; --line:#3a322f;
@@ -52,8 +58,8 @@
   .bar{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:10px}
   .panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:12px}
 
-  /* You cannot deduce from evidence you have to scroll to. The order you are
-     building on the left, every round she has judged on the right, both on
+  /* You cannot deduce from evidence you have to scroll to. The round you are
+     building on the left, every round they have judged on the right, both on
      screen at the same time. */
   .wrap{display:grid;grid-template-columns:minmax(0,1fr) 356px;gap:14px;align-items:start}
   .wrap .panel{margin-bottom:0}
@@ -80,13 +86,13 @@
      was caught, the sentences visibly floating off the lines. Pinned by id. */
   #nbSheet .nbrow{margin:0;font-size:14px;line-height:22px}
   #nbSheet .nbwhy{font-size:11.5px;line-height:1.4;margin:3px 0 8px}
-  /* she has taken the page back; what the page is FOR is not the news */
+  /* the page is away; what the page is FOR is not the news */
   #examArea .nbwhy{display:none}
   /* CLOSING THE NOTEBOOK, from inside the notebook. It rides in the panel, so
      it is there in the rail and there in the phone's sheet, and closing means
      the same thing in both. On the pad it reads in the pad's own ink, so it
      looks like part of the page rather than a control stuck onto it.
-     Not on screen once she has taken the page back, or once the night is over:
+     Not on screen once the page is away, or once the night is over:
      there is nothing left to close. */
   .nbfoot{margin-top:8px;border-top:1px solid var(--line);padding-top:4px}
   .nbshut{display:block;width:100%;min-height:44px;text-align:left;
@@ -110,7 +116,7 @@
   .btn-call{background:var(--brass);border-color:var(--brass);color:var(--onbrass);font-weight:650}
   /* THE EXAM IS NOT THE PRIMARY ACTION. It was the loudest thing on the rail —
      a filled brass button pointing at the one move that can cost you rounds —
-     while the actual move, ordering a round, was a quiet outline. So it is an
+     while the actual move, serving a round, was a quiet outline. So it is an
      edge until the evidence says the player can win it: renderStanding fills it
      the moment exactly one theory is left, which is the moment the four unseen
      rounds are all determined and the exam is a formality. */
@@ -133,7 +139,7 @@
 
   /* THE RULES, WHERE THE QUESTION GETS ASKED. This was a bare glyph in the
      header at the same visual weight as "skin", and behind it sits the one
-     paragraph that says what she can possibly care about. It now sits inside
+     paragraph that says what they can possibly care about. It now sits inside
      the sentence that raises the question, and it looks pressable rather than
      printed — a ring, not a glyph floating in prose.
      TWO BOXES, ON PURPOSE. The BUTTON is 44x44, which is the thumb target the
@@ -185,8 +191,8 @@
   .helpex{margin:0 0 4px;padding-left:18px;list-style:none}
   .helpex li{font-family:ui-serif,Georgia,serif;font-size:15px;color:var(--ink);
     margin-bottom:5px;position:relative}
-  /* a hanging brass tick, so the examples read as her lines rather than as a
-     checklist of things to do */
+  /* a hanging brass tick, so the examples read as things a customer wants
+     rather than as a checklist of things to do */
   .helpex li::before{content:"·";position:absolute;left:-14px;color:var(--brass);font-weight:700}
   /* The only prose link in the game, and unstyled it fell back to the UA's
      visited-purple, which is both off-palette and colour as the sole channel.
@@ -199,11 +205,14 @@
   .helphow{margin:0;padding-left:19px;font-size:14px;line-height:1.55}
   .helphow li{margin-bottom:8px}
   .helphow li::marker{color:var(--brass);font-weight:600}
-  /* her two opening examples are evidence like any other, so they sit at the top
+  /* the two on the house are evidence like any other, so they sit at the top
      of the same ledger — marked as given rather than earned, not in a second box */
   .given{border-bottom:1px dashed var(--line);padding-bottom:7px;margin-bottom:5px}
   .given .lab{font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--dim);margin-bottom:2px}
-  .given .mini{min-height:40px;align-items:flex-end}
+  /* 46px because the tallest silhouette in every skin is 60 units and
+     SCALE.log is .7 here — 42px drawn, and the old 40 sliced the foam off a
+     Mug. Phone equivalent is below. Measured, not guessed. */
+  .given .mini{min-height:46px;align-items:flex-end}
 
   /* ---------- THE NOTEBOOK, WHICH IS A PAD ON THE BAR ----------
      Paper ground, ruled lines, a red margin rule, a pen strike.
@@ -325,8 +334,8 @@
     font-variant-numeric:tabular-nums}
   .a-flick{animation:flick .5s ease-out both}
   /* THE SOLVE SHOULD FEEL LIKE ONE. Everything else here is deliberately cool —
-     she never congratulates you — so the single moment allowed to be warm is
-     the one where you had her. The headline lands first and the answer washes
+     nobody congratulates you — so the single moment allowed to be warm is
+     the one where you had them. The headline lands first and the answer washes
      in behind it a beat later, which is the order the player wants them in:
      "I got it", then "here's what it was". Transform, opacity and a background
      size only, so it composites and nothing reflows. */
@@ -356,15 +365,21 @@
       radial-gradient(120% 70% at 50% 100%, color-mix(in srgb,var(--brass) 15%,transparent), transparent 68%),
       linear-gradient(var(--panel2), color-mix(in srgb,var(--panel2) 70%, var(--bg)));
     box-shadow:inset 0 -1px 0 color-mix(in srgb,var(--brass) 30%,transparent)}
-  .tray.empty::after{content:"asking for nothing is a fair question";color:var(--dim);font-size:12px;align-self:center}
+  .tray.empty::after{content:"pouring nothing is a fair question";color:var(--dim);font-size:12px;align-self:center}
   .picker{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+  /* now a <button>, so the UA's own font, colour and text-align have to be
+     reset or the drink names inherit a system face and centre differently from
+     the legend's. font:inherit is the one that matters. */
   .pcell{display:flex;align-items:flex-end;justify-content:center;min-height:clamp(74px,12vh,116px);padding:9px 4px 7px;
     border:1px solid var(--line);border-radius:10px;cursor:pointer;
+    font:inherit;color:inherit;text-align:center;-webkit-appearance:none;appearance:none;
     background:
       radial-gradient(85% 55% at 50% 88%, color-mix(in srgb,var(--brass) 13%,transparent), transparent 72%),
       var(--panel2);
     box-shadow:inset 0 -1px 0 color-mix(in srgb,var(--brass) 22%,transparent);
     transition:border-color .15s, box-shadow .15s, transform .12s}
+  .pcell:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+  .tok[role="button"]:focus-visible{outline:2px solid var(--brass);outline-offset:2px;border-radius:4px}
   .pcell:hover{border-color:var(--brass);
     box-shadow:inset 0 -1px 0 var(--brass), 0 2px 12px color-mix(in srgb,var(--brass) 18%,transparent)}
   .pcell:active{transform:translateY(1px)}
@@ -378,7 +393,7 @@
   .leg{display:flex;align-items:flex-end;gap:5px;font-size:11px;color:var(--dim)}
   .mini{display:flex;gap:5px;align-items:flex-end}
 
-  /* the night's run, in the order you asked for it. The ledger groups by verdict,
+  /* the night's run, in the order you served them. The ledger groups by verdict,
      which is what you want for comparing evidence but destroys sequence — and in
      an inductive puzzle the order IS the argument. Marks only: no score, no par,
      no number. It wraps rather than scrolls, so a padded night grows into a long
@@ -410,15 +425,19 @@
   .logcol.y{border-color:color-mix(in srgb,var(--took) 40%,var(--line))}
   .logcol.n{border-color:color-mix(in srgb,var(--slid) 40%,var(--line))}
   .logcol.y h3{color:var(--took)} .logcol.n h3{color:var(--slid)}
-  .entry{display:flex;align-items:center;gap:7px;padding:3px 0;border-bottom:1px solid var(--line)}
+  .entry{display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid var(--line)}
+  /* "Round", never "order": order is one of the four attributes the usual can
+     be about, so an "order 3" in the ledger would read as an arrangement. */
+  .rno{font-size:10px;color:var(--dim);font-variant-numeric:tabular-nums;
+    flex:0 0 auto;min-width:14px}
   .entry:last-child{border-bottom:0}
-  /* the column already says what she did — this mark says only whether YOU knew */
+  /* the column already says what they did — this mark says only whether YOU knew */
   .mk{font-size:11px;width:15px;text-align:center;font-weight:700;flex:0 0 auto}
   /* THE SURPRISE IS THE BRIGHT ONE. It was the other way round — a lit ✓ for a
-     call you got right and a greyed-out ✗ for one she caught you on — which
+     call you got right and a greyed-out ✗ for one they caught you on — which
      contradicts the share card, the end screen and about.html, all three of
      which say the surprises are the rounds you learned something in. A night of
-     nothing but ✓ usually means you only ordered what you were already sure of.
+     nothing but ✓ usually means you only poured what you were already sure of.
      Colour is not the channel: ✓ / ! / – are three different glyphs, and the
      names are the engine's own — called, surprised, free. */
   .mk.called{color:var(--dim);font-weight:400}
@@ -479,8 +498,8 @@
     .ledger{flex:0 1 auto;min-height:0;display:flex;flex-direction:column}
     .ledger .logs{overflow-y:auto;min-height:0}
     /* SCOPED TO THE RAIL, because the same node is also the exam's one-line
-       panel and the reveal's page. Unscoped, the exam's "she's holding your
-       notebook" sentence was floored at half the viewport — 400px of blank
+       panel and the reveal's page. Unscoped, the exam's "the notebook stays
+       shut" sentence was floored at half the viewport — 400px of blank
        ruled paper under one line. */
     .rail #notebook{flex:1 1 auto;min-height:calc(50vh - 54px);display:flex;flex-direction:column}
     /* 44px is a TOUCH guideline and there is no touch here. AA's floor is 24px;
@@ -532,8 +551,8 @@
   @media (max-width:900px){
     .wrap{grid-template-columns:1fr;gap:8px}
     .wrap > main{display:contents}
-    /* #examArea is a grid item too now, and it leads: her four rounds first,
-       then the ledger she is letting you keep */
+    /* #examArea is a grid item too now, and it leads: the four rounds first,
+       then the ledger you get to keep */
     #examArea{order:0}
     #say{order:1} #tray{order:2} .rail{order:3} #picker{order:4}
     #controls{order:5} #hint{order:6} #strip{order:7}
@@ -552,20 +571,22 @@
       flex-direction:column;justify-content:flex-end;align-items:center;gap:2px}
     .pname{display:block}
     .ledger{padding:9px}
-    /* the two columns are already headed "She took" and "Sent back", and at the
-       start the seeds are the only things in them — the label is 14px of the
-       one budget that has to buy the names above */
-    .given .lab{display:none}
+    /* NOT HIDDEN ANY MORE. A playtester read "THEY TOOK (0)" with a drink
+       plainly sitting under it and concluded the game was broken — because the
+       dashed rule was drawn at the weight of decoration and the one word that
+       explains it was suppressed to save 14px. Those 14px were the difference
+       between a ledger and a contradiction. */
+    .given .lab{display:block;font-size:9px;margin-bottom:1px}
     /* THE PHONE'S ONE POT. Everything above the fold is paid for out of this
        scroller and the seed row inside it — 20vh, a 40px seed row and an "on
        the house" caption were what the stack could afford before the frame
        line, the second call button and nine drink names existed, and all three
        of those buy more than four rounds of ledger does. Trimmed so the natural
        height DROPS rather than the cap clipping it: measured, the opening logs
-       are 97px against a 100px cap, so her two openers are still whole. */
+       are 97px against a 100px cap, so the two openers are still whole. */
     .logcol{padding:6px;min-height:0}
-    .ledger .logs{max-height:15vh;overflow-y:auto}
-    .given .mini{min-height:32px}
+    .ledger .logs{max-height:17vh;overflow-y:auto}
+    .given .mini{min-height:36px}   /* 33px drawn at SCALE.log .55 */
     /* the column headings already say took and sent back, and the exam is
        explained when it starts — neither sentence earns its height here */
     #prompt,.ledger .sub{display:none}
@@ -581,7 +602,26 @@
     #declare{padding:7px 14px}
     /* the two calls no longer take turns with a single button, so on a phone
        they are a row of their own and pay for it in padding */
-    .btn-call{padding:8px 11px;font-size:15px}
+    /* 44px, measured: 15px/1.5 leading is 23px, so 11px of padding each side
+       lands on the floor exactly. The gutter goes to 14px too — these are the
+       two OPPOSITE answers, they sat 8px apart at 41px tall, and a mis-hit here
+       calls the round wrong. .row's own gap is 8px, so #controls overrides it. */
+    .btn-call{padding:11px 12px;font-size:15px;min-height:44px}
+    #controls{gap:14px}
+    /* "Ask the regular" and "Clear" sit directly under the two call buttons and
+       were 34px tall — a playtester reported nearly hitting Clear (which empties
+       the tray) while reaching for a call. Anything in the play row or on the
+       end card is a real target; the HEADER's quiet buttons keep their stated
+       exception, because they are settings and a mis-tap there costs nothing. */
+    #controls .btn-quiet,#doneArea .btn-quiet{min-height:44px;padding-top:11px;padding-bottom:11px}
+    /* 40px, and it commits you to a wager. Deliberately NOT made louder — it is
+       quiet-with-border on purpose, because it used to be the loudest thing on
+       the rail while pointing at the one move that can cost rounds. Only the
+       target grows. */
+    #declare{min-height:44px}
+    /* the forward path out of a finished night was the faintest thing on the
+       screen, under two paragraphs and beside a big gold Copy it competes with */
+    #next{border-color:var(--line);color:var(--ink)}
     /* A REAL THUMB TARGET WITHOUT A TALLER LINE. Both of these live inside a
        line of running text, so the box is grown to 44 and the same amount is
        taken back in margin: the target is 44px, the line is not. Same trick as
@@ -589,6 +629,12 @@
     #nbBtn{padding:11px 8px;margin:-5px 0}
     .nbtap{padding:13px 0;margin:-13px 0}
     .say{padding:8px 10px;font-size:14px;margin-bottom:0}
+    /* RESERVED, EMPTY OR NOT. One line at 14px/1.5 plus 8px of padding each
+       side is 37px, and holding it from the first paint is what stops the
+       picker — and therefore #declare — moving under a thumb that is already
+       mid-tap. Two-line verdicts still grow by a line; the guard in askExam
+       covers that residue. */
+    #say{min-height:37px}
     #hint{font-size:12px;margin-top:4px}
     /* The 375x667 budget has no room for eighty sentences in the stack, so on a
        phone the notebook is a sheet you open from the count. ONLY WHILE IT IS
@@ -685,16 +731,20 @@
 <!-- THE GAME, STATED, IN THIRTEEN WORDS. Nothing on this page said there WAS a
      hidden rule — the word never appeared outside a dialog nobody opens — and
      nothing said what the player was supposed to be DOING. "I know what she
-     likes" primes taste, which is the one thing she never cares about. This
-     names the task first and then bounds it, and it gives away no individual
-     rule because it is true of all of them. Deducing a rule, not guessing a
-     combination: "work out HER RULE" is load-bearing and the four nouns are the
-     bound, not a list of things to try.
+     likes" primed TASTE, and taste is the one thing the game never deals in:
+     every shipped rule is count, colour, size or arrangement. A USUAL is not a
+     taste. It is real bar vocabulary, it is arbitrary by nature — so it
+     licenses "the sizes never decrease from left to right" — and it refreshes
+     nightly, which is what makes a different rule every night make sense at
+     all. This names the task first and then bounds it, and it gives away no
+     individual rule because it is true of all of them. Deducing a rule, not
+     guessing a combination: "work out THEIR USUAL" is load-bearing and the four
+     nouns are the bound, not a list of things to try.
      Outside #playArea on purpose, so it is there on the warm-ups, through the
      exam, and at the reveal. The ? is inside the sentence, where the question
      forms — read the four nouns, wonder what they mean, and the answer is the
      next thing your eye reaches. -->
-<p class="premise"><strong>Work out her rule</strong> — it's only ever colour, size,
+<p class="premise"><strong>Work out their usual</strong> — it's only ever colour, size,
   order, or how many.<button class="qmark" id="helpBtn" aria-label="How to play"
   title="How to play"><span>?</span></button></p>
 
@@ -709,18 +759,18 @@
          silently — the same defect as the block that lost to plain base rules -->
     <p class="sub" id="hint"></p>
     <div class="legend" id="legend"></div>
-    <div class="strip" id="strip" role="list" aria-label="Tonight's rounds, in the order you asked for them"></div>
+    <div class="strip" id="strip" role="list" aria-label="Tonight's rounds, in the order you served them"></div>
   </main>
 
   <!-- THE EXAM SITS IN THE PLAY COLUMN, not in a screen of its own. show("exam")
        used to hide #playArea whole, which took the ledger away with it and made
        a reasoning test into a memory test — and the ledger leaks nothing, it is
-       only rounds she has already judged in front of the player. The NOTEBOOK is
-       still taken back; that is a different promise and it is kept in
+       only rounds they have already judged in front of the player. The NOTEBOOK
+       is still put away; that is a different promise and it is kept in
        renderNotebook. -->
   <div id="examArea" class="hidden">
     <div class="panel">
-      <div class="say i"><strong>Last orders.</strong> No help from here. Will she take these?</div>
+      <div class="say i"><strong>Last orders.</strong> No help from here. Would they take these?</div>
       <div id="examBody"></div>
     </div>
   </div>
@@ -749,8 +799,8 @@
            orders, and an offer to declare while you are declaring is a button
            that throws. renderStanding decides whether it is filled or an edge. -->
       <div id="declareBox">
-        <button class="btn-edge" id="declare" style="width:100%;margin-top:10px">I know what she likes</button>
-        <p class="sub" style="margin:7px 0 0">She'll test you on four rounds you haven't seen.</p>
+        <button class="btn-edge" id="declare" style="width:100%;margin-top:10px">I know their usual</button>
+        <p class="sub" style="margin:7px 0 0">Four rounds you haven't served will settle it.</p>
       </div>
     </div>
   </aside>
@@ -765,18 +815,18 @@
      appears only once there is a night to be curious about — renderControls
      owns that, and the question it answers has no referent before round one. -->
 <footer class="foot">
-  <a class="hidden" id="aboutLink" href="about.html">Why she keeps refusing perfectly good drinks</a>
+  <a class="hidden" id="aboutLink" href="about.html">Why they keep refusing perfectly good drinks</a>
 </footer>
 
-<!-- Know your bartender. A native <dialog> so ESC, the focus trap and the
+<!-- Know your customer. A native <dialog> so ESC, the focus trap and the
      backdrop come for free rather than being re-implemented badly.
 
      What it is for, precisely: Wordle tells you the answer is a five-letter
      word you already know, and that bound is most of what makes it feel fair.
      Measured, the search here is SMALLER than Wordle's — about 4 bits against
-     11 — but nothing on screen says what she can possibly care about, so the
+     11 — but nothing on screen says what they can possibly care about, so the
      player has to invent the candidates as well as choose between them. The
-     first paragraph below is that bound. It is true of every rule in the game
+     second paragraph below is that bound. It is true of every rule in the game
      and gives away no individual one.
 
      The three examples are illustration, not content: each is chosen to be a
@@ -785,38 +835,38 @@
 <dialog id="help" class="sheet" aria-labelledby="helpTitle">
   <div class="helpbox">
     <div class="helphead">
-      <h2 id="helpTitle">Know your bartender</h2>
+      <h2 id="helpTitle">Know your customer</h2>
       <button class="btn-quiet icon" id="helpX" aria-label="Close">✕</button>
     </div>
 
-    <p>She has a rule tonight. She will not tell you what it is — she will just
-      take what she likes and slide the rest back.</p>
+    <p>You're behind the bar. Tonight's customer has a usual and won't say what
+      it is — they take what fits and slide the rest back.</p>
 
-    <p><strong>She only ever cares about four things:</strong> how many drinks
-      you order, their colours, their sizes, and the order they come in. That's
-      the whole of it. Nothing about the day, nothing about you, nothing she
-      hasn't already shown you.</p>
+    <p><strong>They only ever care about four things:</strong> how many drinks
+      are in it, what colours, what sizes, what order. That's the whole of it.
+      Nothing about the day, nothing about you, nothing they haven't already
+      shown you.</p>
 
-    <p class="helplab">So a house rule sounds like</p>
+    <p class="helplab">So a usual sounds like</p>
     <ul class="helpex">
       <li>“There are exactly three drinks.”</li>
       <li>“The smallest glass comes last.”</li>
       <li>“There's more than one colour in it.”</li>
     </ul>
-    <p class="sub">Not tonight's — she'd never make it that easy.</p>
+    <p class="sub">Not tonight's — they're never that easy.</p>
 
     <p class="helplab">How a night goes</p>
     <ol class="helphow">
-      <li><strong>Order a round.</strong> Anything. She takes it or she doesn't,
+      <li><strong>Serve a round.</strong> Anything. They take it or they don't,
         and either way you've learned something.</li>
-      <li><strong>Then call it first.</strong> Say what she'll do before you
-        ask. Being wrong is the good part — that's where the rule shows.</li>
-      <li><strong>Say you've got her.</strong> She'll put four rounds in front
-        of you. Read her right on all four and the night is yours.</li>
+      <li><strong>Then call it first.</strong> Say what they'll do before you
+        pour. Being wrong is the good part — that's where it shows.</li>
+      <li><strong>Say you've got them.</strong> Four rounds you haven't served.
+        Call all four right and the night is yours.</li>
     </ol>
 
     <p class="sub" style="margin-top:12px">Stuck? <strong>Ask the regular</strong> —
-      he's been drinking here longer than you. <a href="about.html">Why she keeps
+      he's seen this one before. <a href="about.html">Why they keep
       refusing perfectly good drinks →</a></p>
   </div>
 </dialog>
@@ -835,8 +885,13 @@
     </div>
     <p id="askPrice"></p>
     <div class="row" style="margin-top:16px">
-      <button class="btn-go" id="askYes">Go on then</button>
+      <!-- "Not yet" FIRST, and therefore leftmost. "Go on then" used to render
+           at x 33-146 on a phone, which is where the left picker cell sits: a
+           player mis-tapping into this dialog then confirmed it with the same
+           finger in the same place. The accept for an action that cannot be
+           undone may not be the one under an accidental tap. -->
       <button class="btn-quiet" id="askNo">Not yet</button>
+      <button class="btn-go" id="askYes">Go on then</button>
     </div>
   </div>
 </dialog>
@@ -888,7 +943,7 @@ let rule = currentRule();
 let session = db.sessions[rule.n] && db.sessions[rule.n].phase !== "done"
   ? db.sessions[rule.n] : E.newSession(rule, Date.now());
 
-let tray = [], poured = -1, busy = false, said = null;
+let tray = [], poured = -1, busy = false, said = null, saidAt = 0;
 
 const skin = () => SKINS[db.skin];
 const CL = i => skin().cols[i].name;
@@ -896,10 +951,10 @@ const HX = i => skin().cols[i].hex;
 const SZ = i => skin().sizes[i];
 const $  = id => document.getElementById(id);
 const SCALE = { tray: 1.75, pick: 1.45, mini: .8, log: .7, leg: .62 };
-/* the player's frame, not hers: green is a call you got right, amber is one she
-   caught you out on, grey is a free opener with no call to get right */
+/* the player's frame, not the customer's: green is a call you got right, amber
+   is one they caught you out on, grey is a free opener with no call to get right */
 const GLYPHS = { called: "🟩", surprised: "🟨", free: "⬜", failed: "❌" };
-const MARK_LABEL = { called: "you called it", surprised: "she surprised you", free: "on the house" };
+const MARK_LABEL = { called: "you called it", surprised: "they surprised you", free: "on the house" };
 
 /* Lights up / lights down, drawn rather than spelled. currentColor so it
    inherits the quiet-button colour and needs no palette entry of its own. */
@@ -1005,15 +1060,15 @@ function renderHead() {
   const par = pro() ? E.score(session, rule).par : null;
   const head = starter
     ? `Warming up — ${STARTERS.indexOf(rule)+1} of ${STARTERS.length}`
-    : `${todayISO} · house rule #${rule.n}${par === null ? "" : ` · par ${par}`}`;
+    : `${todayISO} · customer #${rule.n}${par === null ? "" : ` · par ${par}`}`;
   /* The count's home on a phone — see renderStanding. #dayline is the only line
      in the bar the phone layout does not suppress, and re-homing into it costs
      no block and no new height, where a fourth header button wraps the row. */
   $("dayline").textContent = head;
   $("dayline").appendChild(Object.assign(document.createElement("span"), { id: "nbCountSlot" }));
-  /* the column headings already say what she did with each one — this line only
+  /* the column headings already say what they did with each one — this line only
      has to say what the list IS. Instructions live under the picker instead. */
-  $("prompt").textContent = "Everything she's judged tonight. The first two were on the house.";
+  $("prompt").textContent = "Everything they've judged tonight. The first two were on the house.";
   renderMini($("seedY"), rule.seedYes);
   renderMini($("seedN"), rule.seedNo);
 }
@@ -1025,7 +1080,16 @@ function renderTray() {
   tray.forEach((d, i) => {
     const n = tok(d, SCALE.tray);
     if (i === poured) n.classList.add("a-pour");
+    /* click-to-remove was invisible and keyboard-unreachable: the only removal
+       control a player could see was "Clear", which empties the whole tray, so
+       a mis-tap on the fifth drink of six meant rebuilding from nothing. */
     n.onclick = () => removeAt(i);
+    n.setAttribute("role", "button");
+    n.setAttribute("tabindex", "0");
+    n.setAttribute("aria-label", `Take the ${SZ(d.s)} ${CL(d.c)} back off the tray`);
+    n.onkeydown = e => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); removeAt(i); }
+    };
     el.appendChild(n);
   });
   poured = -1;
@@ -1040,8 +1104,8 @@ function removeAt(i) {
 }
 
 /* The picker offers exactly the drinks the rule's space holds, and no others —
-   otherwise a tutorial player can order something the puzzle cannot contain, and
-   the bartender's verdict on it means nothing. Which drinks exist is the
+   otherwise a tutorial player can pour something the puzzle cannot contain, and
+   the customer's verdict on it means nothing. Which drinks exist is the
    engine's answer, not the page's; the page only lays them out. One row per
    colour, one column per size, and the grid narrows with the space so a
    two-drink bar does not stretch two cells across the whole counter. */
@@ -1053,9 +1117,15 @@ function renderPicker() {
   el.style.maxWidth = space.sizes.length < 3 ? `${(100 * space.sizes.length / 3).toFixed(1)}%` : "";
   space.cols.forEach(c => space.sizes.forEach(s => {
     const col = skin().cols[c], sz = skin().sizes[s];
-    const cell = document.createElement("div");
+    /* A REAL BUTTON. These were <div>s, so they took no focus and answered no
+       key — a keyboard player could reach the call buttons and never build a
+       round to call. `type` matters: a bare <button> inside nothing still
+       defaults to submit in some engines. */
+    const cell = document.createElement("button");
+    cell.type = "button";
     cell.className = "pcell";
     cell.title = `${sz} ${col.name}`;
+    cell.setAttribute("aria-label", `Add a ${sz} ${col.name} to the round`);
     const t = tok({ c, s }, SCALE.pick, true);
     t.style.pointerEvents = "none";
     cell.appendChild(t);
@@ -1095,7 +1165,7 @@ function renderPicker() {
 function renderControls() {
   const el = $("controls");
   el.innerHTML = "";
-  /* the About page answers "why does she keep refusing perfectly good drinks?"
+  /* the About page answers "why do they keep refusing perfectly good drinks?"
      — there is no referent for that question before the first round, so the link
      appears only once one exists. Visibility only: no derivation enters here. */
   $("aboutLink").classList.toggle("hidden", !(db.times.length || session.probes.length));
@@ -1104,7 +1174,7 @@ function renderControls() {
   clear.className = "btn-quiet"; clear.textContent = "Clear";
   clear.onclick = () => { if (!busy) { tray = []; renderTray(); renderControls(); } };
 
-  /* The regular suggests a round, never a rule. The player still calls it. */
+  /* The regular suggests a round, never the usual. The player still calls it. */
   const ask = document.createElement("button");
   ask.className = "btn-quiet"; ask.textContent = "Ask the regular";
   ask.title = "He'll point you at something worth trying. Costs you a round.";
@@ -1112,9 +1182,9 @@ function renderControls() {
     if (busy) return;
     /* A whole CLASS first, a round only as a fallback. Probing at random costs
        about par, so choosing the round was never the hard part — holding the
-       theories is. "She isn't watching colour" kills every colour theory the
+       theories is. "They aren't watching colour" kills every colour theory the
        player is carrying, which is the thing they cannot do for themselves. */
-    /* PRO ONLY. It costs a round to be told "she isn't watching colour", and
+    /* PRO ONLY. It costs a round to be told "they aren't watching colour", and
        with the notebook open that is already on the glass — measured, daily 12
        shows the whole colour family struck before a single probe, and this
        panel renders a dead family as "colour — all crossed out". Charging a
@@ -1126,8 +1196,8 @@ function renderControls() {
       persist(); renderControls(); renderNotebook(); renderStanding();
       $("hint").textContent = {
         colour: "The regular leans over: “Don't bother with colour. Not tonight.”",
-        size:   "The regular leans over: “It's not size. She'd take any of them.”",
-        order:  "The regular leans over: “Order 'em however you like. She's not fussed.”"
+        size:   "The regular leans over: “It's not size. They'd take any of them.”",
+        order:  "The regular leans over: “Line 'em up however you like. They're not fussed.”"
       }[cls.attr];
       return;
     }
@@ -1138,8 +1208,8 @@ function renderControls() {
     poured = tray.length - 1;
     persist(); renderTray(); renderControls(); renderNotebook(); renderStanding();
     $("hint").textContent = r.length
-      ? "“Try this one.” Ordering it is still on you — so is calling it."
-      : "“Ask her for nothing,” he says. “Go on. See what she does.”";
+      ? "“Try this one.” Pouring it is still on you — so is calling it."
+      : "“Serve 'em nothing,” he says. “Go on. See what they do.”";
   };
 
   let giveUpBtn = null;
@@ -1157,7 +1227,7 @@ function renderControls() {
     giveUpBtn = out;
   }
 
-  /* Always available once a round has been ordered, and it reveals nothing —
+  /* Always available once a round has been served, and it reveals nothing —
      it just clears the night and deals the same puzzle again. Being unable to
      abandon a puzzle you cannot solve is the most frustrating state the game
      can put someone in, and until now there was no way out of it at all. */
@@ -1165,7 +1235,7 @@ function renderControls() {
   if (session.probes.length) {
     const over = document.createElement("button");
     over.className = "btn-quiet"; over.textContent = "Start over";
-    over.title = "Clear the night and order again from the top. Same puzzle.";
+    over.title = "Clear the night and pour again from the top. Same puzzle.";
     over.onclick = () => {
       if (busy) return;
       session = E.newSession(rule, Date.now());
@@ -1189,10 +1259,10 @@ function renderControls() {
      reaches for .btn-yes to drive a round. .btn-call is declared after both, so
      it wins every property they set and the pair renders as one brass row. */
   const y = document.createElement("button");
-  y.className = "btn-call btn-yes"; y.textContent = "She'll take it";
+  y.className = "btn-call btn-yes"; y.textContent = "They'll take it";
   y.onclick = () => serve(true);
   const n = document.createElement("button");
-  n.className = "btn-call btn-no"; n.textContent = "She'll send it back";
+  n.className = "btn-call btn-no"; n.textContent = "They'll send it back";
   n.onclick = () => serve(false);
   el.append(y, n, ask, clear);
   if (overBtn) el.appendChild(overBtn);
@@ -1209,18 +1279,18 @@ function nudge() {
   const s = E.score(session, rule);
   /* The moment it starts counting. Nothing on screen has moved, so this line is
      the only thing that marks the change — and it says the change AND the point
-     of the game in one breath, because a player who orders only what they are
+     of the game in one breath, because a player who pours only what they are
      sure of will call everything right and learn nothing. */
   if (!bets.length)
     return "Now it counts. A round you're already sure about teaches you nothing.";
   if (bets.length >= 3 && bets.every(p => p.call === true))
     return "You've only ever expected a yes. Try to be wrong on purpose — it's quicker.";
   if (session.probes.length >= 4 && !session.probes.some(p => !p.accepted))
-    return "She's taken everything so far. See if you can get one sent back.";
+    return "They've taken everything so far. See if you can get one sent back.";
   /* Well past the line — and par is a lower bound, so this is a nudge toward a
      method, never a scolding and never a cap on how long you may keep going. */
   if (s.par !== null && s.toPar > 6)
-    return "Long night. Take one she liked and change a single thing about it.";
+    return "Long night. Take one they kept and change a single thing about it.";
   /* par is a pro number now — see renderHead */
   return s.par === null || !pro() ? "" : `Par's ${s.par}. You're on ${s.effective}.`;
 }
@@ -1231,6 +1301,11 @@ function serve(call) {
   const accepted = rule.fn(round);
   session = E.probe(session, rule, round, call, Date.now());
   said = { accepted, call };
+  /* when the verdict landed. Even with #say reserved, a two-line verdict grows
+     the column by a line, so a tap already in flight can still arrive on
+     #declare. 700ms is long enough to cover a muscle-memory second tap and
+     short enough that a player who means it never notices. */
+  saidAt = Date.now();
   renderSay();
   const glasses = [...$("tray").children];
   glasses.forEach(g => g.classList.add(accepted ? "a-yes" : "a-no"));
@@ -1246,7 +1321,7 @@ function serve(call) {
 function renderSay() {
   if (!said) { $("say").innerHTML = ""; return; }
   const { accepted, call } = said;
-  const line = accepted ? "She takes it." : "She slides it back.";
+  const line = accepted ? "They take it." : "They slide it back.";
   const extra = call === null ? ""
     : ` <span class="called">${call === accepted ? "You called it." : "You expected the opposite."}</span>`;
   $("say").innerHTML = `<div class="say ${accepted ? "y" : "n"}"><strong>${line}</strong>${extra}</div>`;
@@ -1254,8 +1329,12 @@ function renderSay() {
 
 function renderLog() {
   const taken = session.probes.filter(p => p.accepted).length;
-  $("logYT").textContent = `She took (${taken})`;
-  $("logNT").textContent = `Sent back (${session.probes.length - taken})`;
+  /* NO COUNT UNTIL THERE IS SOMETHING TO COUNT. "They took (0)" printed over a
+     drink they had visibly taken — the two on the house are not counted, so the
+     tally was right and read as a contradiction. It appears once you have poured. */
+  const n = session.probes.length;
+  $("logYT").textContent = n ? `They took (${taken})` : "They took";
+  $("logNT").textContent = n ? `Sent back (${n - taken})` : "Sent back";
   const col = { true: $("logY"), false: $("logN") };
   col[true].innerHTML = ""; col[false].innerHTML = "";
   session.probes.forEach(p => {
@@ -1270,14 +1349,24 @@ function renderLog() {
     const mini = document.createElement("div");
     mini.className = "mini";
     renderMini(mini, p.round, SCALE.log);
-    row.append(m, mini);
+    /* the round number is what says a row is one ROUND and not one drink — a
+       playtester read two glasses side by side as two separate verdicts */
+    const no = document.createElement("div");
+    no.className = "rno";
+    no.textContent = session.probes.indexOf(p) + 1;
+    row.append(no, m, mini);
     col[p.accepted].appendChild(row);
   });
+  /* Measured on a phone: 100px of pane holding 136px of content with scrollTop
+     pinned at 0, so 11px of the round just served was visible. The newest entry
+     is the entire point of this panel. */
+  const sc = document.querySelector(".ledger .logs");
+  if (sc) sc.scrollTop = sc.scrollHeight;
 }
 
-/* One mark per probe, in the order you asked for them, taken straight from the
+/* One mark per probe, in the order you served them, taken straight from the
    engine's share-mark derivation — same vocabulary as the end card, none of the
-   card: no score, no par, no puzzle number, nothing she has not already shown
+   card: no score, no par, no puzzle number, nothing they have not already shown
    you. Hover or focus a mark to get the round back. */
 let stripSeen = 0;
 function renderStrip() {
@@ -1316,7 +1405,7 @@ function renderStrip() {
  * what E.notebookState hands it and holds no rule of its own.
  */
 
-/* The two modes, named once, in her register rather than a manual's. The honest
+/* The two modes, named once, in the bar's register rather than a manual's. The honest
    distinction is not easy-and-hard: with the page open you are crossing off a
    list somebody else already wrote, and with it shut you have to think the
    theories up yourself, which is the whole of the actual task. It is the
@@ -1337,7 +1426,12 @@ function nbPanel() {
     el = document.createElement("div");
     el.id = "notebook";
     el.className = "panel";
-    el.innerHTML = `<div class="nbhead"><span class="nbtitle">Her rule is on this page</span>
+    /* NOT "on this page", which is what the promise used to be called. The head
+       is one 22px row and the count beside it can reach "13 of 20 still stand" —
+       measured at 1440x900, where the pad column is 340px: that leaves the title
+       170px, and every wording of "on this page" is 170 and wraps to two lines
+       inside a box that cannot grow. This one is 152. */
+    el.innerHTML = `<div class="nbhead"><span class="nbtitle">Their usual is in here</span>
         <span class="nbcount" id="nbStanding"></span></div>
       <p class="nbwhy"></p><div class="nbbody" id="nbBody"></div>
       <div class="nbfoot"><button class="btn-quiet nbshut" id="nbShut">Close notebook</button></div>`;
@@ -1405,7 +1499,7 @@ let nbDead  = new Set();     // ids already dead at the last render
 let nbSeen  = null;          // last standing count, for the flick
 /* "Died since the last render" needs a last render to exist. Without this the
    FIRST paint calls every corpse a fresh kill — and the opening page is already
-   ~84% struck by her two openers, so nothing would collapse and the player
+   ~84% struck by the two on the house, so nothing would collapse and the player
    would meet a wall of strikethrough that also claimed they had just caused it.
    True on a resumed session too, which starts from an empty nbDead. */
 let nbPrimed = false;
@@ -1413,7 +1507,7 @@ function nbReset() { nbOrder = new Map(); nbDead = new Set(); nbSeen = null; nbP
 
 /* THE LIST THE PLAYER IS ACTUALLY WORKING FROM.
  *
- * Evidence items 0 and 1 are her two free openers, and they land before the
+ * Evidence items 0 and 1 are the two on the house, and they land before the
  * player has done anything — measured, they kill about 84% of the library on
  * sight (80 rows down to 13 on daily 4, 37 down to 6 on warm-up 1). Those
  * theories were never the player's to lose. Printing them, even collapsed,
@@ -1422,9 +1516,9 @@ function nbReset() { nbOrder = new Map(); nbDead = new Set(); nbSeen = null; nbP
  * makes the panel's first impression a page that is mostly crossed out.
  *
  * So they are ABSENT — not collapsed, not struck, not counted. What is left is
- * every theory that was standing when the player sat down: the live ones, and
- * the ones their OWN rounds killed. `crossed out (N)` then starts at zero and
- * grows, which makes it a record of their work rather than of hers.
+ * every theory that was standing when the customer sat down: the live ones, and
+ * the ones the player's OWN rounds killed. `crossed out (N)` then starts at zero
+ * and grows, which makes it a record of their work rather than of the openers'.
  *
  * The promise survives untouched: E.notebookTruth's class is alive on the seeds
  * by construction, so it can never be one of the rows dropped here.
@@ -1456,8 +1550,8 @@ function nbRow(e, C, S, N, truth, just) {
   if (!e.alive) {
     const d = document.createElement("span");
     d.className = "nbdied";
-    /* evidence 0 and 1 are her two openers; item 2 is the player's round 1 */
-    d.textContent = e.diedOn < 2 ? "died on her opener" : `died on round ${e.diedOn - 1}`;
+    /* evidence 0 and 1 are the two on the house; item 2 is the player's round 1 */
+    d.textContent = e.diedOn < 2 ? "died on an opener" : `died on round ${e.diedOn - 1}`;
     p.appendChild(d);
   }
   /* struck on the next frame so the transition has somewhere to come from */
@@ -1471,12 +1565,12 @@ function renderNotebook() {
   nbPlace(el);
   const body = el.querySelector("#nbBody"), count = el.querySelector("#nbStanding");
 
-  /* She takes it back for the exam. Said once, in her voice, where the page was. */
+  /* The page goes away for the exam. Said once, where the page was. */
   if (session.phase === "exam") {
     count.textContent = "";
     body.innerHTML = "";
     body.appendChild(nbRow(
-      { id: -1, alive: true, text: () => "She's holding your notebook until you've answered." },
+      { id: -1, alive: true, text: () => "The notebook stays shut until you've answered." },
       null, null, null, null, false));
     return;
   }
@@ -1513,7 +1607,7 @@ function renderNotebook() {
 
     if (alive === 0 && just.size === 0) {
       /* the regular's class hint, shown instead of sold: a family with nothing
-         left alive IS "she isn't watching colour tonight" */
+         left alive IS "they aren't watching colour tonight" */
       const d = document.createElement("details");
       d.className = "nbmore";
       d.appendChild(Object.assign(document.createElement("summary"),
@@ -1579,7 +1673,7 @@ function nbSheet() {
   d.setAttribute("aria-labelledby", "nbSheetTitle");
   d.innerHTML = `<div class="helpbox">
       <div class="helphead">
-        <h2 id="nbSheetTitle">Her rule is on this page</h2>
+        <h2 id="nbSheetTitle">Their usual is in here</h2>
         <button class="btn-quiet icon" id="nbX" aria-label="Close">✕</button>
       </div>
       <div id="nbSheetBody"></div>
@@ -1613,24 +1707,27 @@ function syncBook() {
 }
 
 /* ---------- exam ---------- */
-/* WHAT IT COSTS, IN HER WORDS, BEFORE IT IS SPENT. Every number is the engine's
+/* WHAT IT COSTS, IN PLAIN WORDS, BEFORE IT IS SPENT. Every number is the engine's
    and is read from where this player actually stands, so a second failed exam
    is quoted its own price rather than a first-timer's. */
 function askExam() {
   if (busy) return;
+  /* see saidAt: declaring is irreversible and costs rounds, and the verdict
+     that just landed may have moved this button under the player's thumb. */
+  if (Date.now() - saidAt < 700) return;
   /* examCharge(k) is what the k-TH failure costs, so a player who has failed f
      times is being quoted f+1. Off by one here would misquote the wager in the
      one sentence whose whole job is to quote it honestly. */
   const f = session.failedExams;
   $("askPrice").textContent =
-    `Four rounds you haven't seen. Call all four right and the night's yours. `
+    `Four rounds you haven't served. Call all four right and the night's yours. `
     /* ONE NUMBER, THE ONE THAT APPLIES NOW. Listing the escalation — "6 next
        time, 9 after that" — spends the reader's attention at the exact moment
        they are deciding whether to commit, on a schedule that only ever
        concerns someone about to fail repeatedly. They are not that person yet.
        Quoting examCharge(f + 1) means the sentence rises on its own for the
        player who keeps coming back, which is who the rising charge is for. */
-    + `Miss one and it's ${E.examCharge(f + 1)} rounds on your tab.`;
+    + `Miss one and it's ${E.examCharge(f + 1)} rounds on the tab.`;
   $("ask").showModal();
 }
 
@@ -1645,7 +1742,7 @@ function startExam() {
   session = E.declare(session, rule, HYPOTHESES, null, Date.now());
   /* renderStanding clears the phone's count. Without it the count stays in the
      header — which show("exam") does not hide — still reading a live number and
-     still opening the page she has just taken off the player. */
+     still opening the page that is supposed to be shut. */
   persist(); show("exam"); renderExam(); renderNotebook(); renderStanding();
 }
 
@@ -1676,8 +1773,8 @@ function renderExam() {
          reopens its two buttons. The engine sees the exam once, at finish(). */
       const t = document.createElement("button");
       t.className = "btn-quiet said";
-      t.textContent = q.answer ? "You said she takes it" : "You said she sends it back";
-      t.title = "Change it — nothing's graded until you give her the lot.";
+      t.textContent = q.answer ? "You said they take it" : "You said they send it back";
+      t.title = "Change it — nothing's graded until you answer all four.";
       t.onclick = () => { q.answer = null; renderExam(); };
       r.append(t);
     }
@@ -1707,12 +1804,12 @@ function renderFailed() {
   $("doneBody").innerHTML = `
     <div class="headline">Not yet.</div>
     <!-- How many, never which. The exam is a covering construction, so at 3 of 4
-         the item named IS the round that separates the player's theory from hers
-         — handing it over after charging them for the attempt makes failing the
-         exam a cheaper hint than asking the regular for one. ex.missed stays in
-         the engine; it is the rendering that leaked. -->
-    <p class="sub" style="margin:0 0 12px">${ex.right} of ${ex.of}. She's not convinced.</p>
-    <div class="say i">Something else still fits everything you've seen. That's ${E.examCharge(session.failedExams)} rounds on your tab — back to the bar.${session.failedExams > 1 ? " She's less patient every time you try this." : ""}</div>
+         the item named IS the round that separates the player's theory from the
+         truth — handing it over after charging them for the attempt makes failing
+         the exam a cheaper hint than asking the regular for one. ex.missed stays
+         in the engine; it is the rendering that leaked. -->
+    <p class="sub" style="margin:0 0 12px">${ex.right} of ${ex.of}. They're not convinced.</p>
+    <div class="say i">Something else still fits everything you've seen. That's ${E.examCharge(session.failedExams)} rounds on the tab — keep pouring.${session.failedExams > 1 ? " They're less patient every time you try this." : ""}</div>
     <button class="btn-go" id="back" style="width:100%">Another round</button>`;
   $("back").onclick = () => { show("play"); renderAll(); };
 }
@@ -1732,20 +1829,41 @@ function renderDone() {
   const riv = E.nameRival(session, rule, HYPOTHESES);
   const quit = !!session.gaveUp;
 
+  /* NAMERIVAL RETURNS NULL FOR NONE *AND* FOR MANY — it speaks only when
+     exactly one rival stands, because naming a theory nobody held is worse than
+     silence. The page used to read that null as "none", so a player who
+     declared with three theories still standing was told "you had them pinned"
+     while the notebook beside it said "3 of 6 still stand". This repo already
+     refused to let the exam certify luck as deduction; the end card may not
+     either. So: count them. */
+  const standing = E.survivors(session, rule, HYPOTHESES).length;
   const rivalLine = riv
     /* three arguments. The item noun is the third, and without it this line
        still said "drink" while the player was looking at a bar of squares. */
-    ? `<p class="sub" style="margin:0 0 6px">You were drinking on a theory: <em>${riv.rival.text(skin().cols.map(c => c.name), skin().sizes, skin().item)}</em>. One round would have told you: <span id="sep"></span></p>`
-    : `<p class="sub" style="margin:0 0 6px">Nothing else fitted what you'd seen — you had her pinned.</p>`;
+    ? `<p class="sub" style="margin:0 0 6px">You were pouring on a theory: <em>${riv.rival.text(skin().cols.map(c => c.name), skin().sizes, skin().item)}</em>. One round would have told you: <span id="sep"></span></p>`
+    : standing === 0
+    ? `<p class="sub" style="margin:0 0 6px">Nothing else fitted what you'd seen — you had them pinned.</p>`
+    /* Honest, and not a scolding: the rounds they served did not separate the
+       last few, and the four they called did. That is still something they did. */
+    : `<p class="sub" style="margin:0 0 6px">${standing} other theories still fitted your rounds${quit ? "." : " — last orders are what settled it."}</p>`;
 
   /* the count already sits inside s.effective — say so rather than hide it */
   const asked = s.hints
     ? `<p class="sub" style="margin:0 0 6px">You asked the regular ${s.hints === 1 ? "once" : s.hints + " times"}, and it is counted in above.</p>`
     : "";
 
+  /* "NEVER ONCE" WAS A CLAIM THE CARD CANNOT MAKE. A surprise counts only on a
+     CALLED round — the two free ones store `call: null` — but the verdict
+     banner says "You expected the opposite" on a free round too, so a player
+     who was visibly caught out on round 2 was later told they never had been,
+     with a sneer attached. The card only knows about called rounds, so that is
+     all it now speaks about. */
   const surprises = s.surprises.length
-    ? `She caught you out on round ${s.surprises.join(" and ")}. That's where you actually learned something.`
-    : `She never once surprised you, which usually means you only ordered what you were already sure of.`;
+    ? `They caught you out on round ${s.surprises.join(" and ")}. That's where you actually learned something.`
+    : `No round you called caught you out — which usually means you poured what you were already sure of.`;
+
+  /* a night can be one round long on a warm-up, and "1 rounds" was shipping */
+  const rounds = n => `${n} ${n === 1 ? "round" : "rounds"}`;
 
   /* Golf: the line, then how far over or under it. The number is the engine's
      (s.toPar, positive for over); this only puts words round it. Par is a
@@ -1764,7 +1882,7 @@ function renderDone() {
     ? ` ${GLYPHS.failed.repeat(session.failedExams)}` : "";
   const line = quit
     ? `Gave up${shown ? ` · about ${shown} min` : ""}`
-    : `${s.effective} rounds${parTail}` +
+    : `${rounds(s.effective)}${parTail}` +
       (session.lastExam ? ` · last orders ${session.lastExam.right}/${session.lastExam.of}` : "");
 
   show("done");
@@ -1772,15 +1890,15 @@ function renderDone() {
      scolded — but it is not celebrated either. */
   $("doneBody").classList.toggle("a-won", !quit);
   $("doneBody").innerHTML = `
-    <div class="headline">${quit ? "She pours you one anyway." : "You had her."}</div>
-    <p class="reveal" style="margin:6px 0 2px">Her rule tonight: ${rule.text()}</p>
+    <div class="headline">${quit ? "The regular tells you." : "You had them."}</div>
+    <p class="reveal" style="margin:6px 0 2px">Their usual tonight: ${rule.text()}</p>
     <p class="sub" style="margin:0 0 14px">${quit ? "You called it a night."
-        : `${s.effective} rounds${vsPar}`}${shown ? ` · about ${shown} min` : ""}</p>
+        : `${rounds(s.effective)}${vsPar}`}${shown ? ` · about ${shown} min` : ""}</p>
     <div class="card">
       <div class="num">Speakeasy #${rule.n}</div>
       <div class="glyphs">${row}${fails}</div>
       <div class="line">${line}</div>
-      <div class="key">🟩 you called it · 🟨 she surprised you · ⬜ on the house${session.failedExams ? " · ❌ last orders missed" : ""}</div>
+      <div class="key">🟩 you called it · 🟨 they surprised you · ⬜ on the house${session.failedExams ? " · ❌ last orders missed" : ""}</div>
     </div>
     <button class="btn-go" id="copy" style="width:100%">Copy</button>
     <div style="margin-top:18px">
@@ -1812,8 +1930,8 @@ function renderDone() {
 /* ---------- plumbing ---------- */
 /* THE LEDGER IS NOT PART OF THE BAR COLUMN. play and exam are both the play
    screen: what changes is which of the two things in the left column is on —
-   the bar you order from, or the four rounds she is asking about. The rail, and
-   with it every round she has already judged, stays up for both. Only the
+   the bar you pour from, or the four rounds of last orders. The rail, and
+   with it every round they have already judged, stays up for both. Only the
    reveal replaces the whole screen. */
 function show(which) {
   $("playArea").classList.toggle("hidden", which === "done");
@@ -1924,7 +2042,7 @@ $("ask").addEventListener("close", () => { const d = $("declare"); if (d) d.focu
    the engine, through E.openNotebook / E.closeNotebook. */
 $("nbBtn").onclick = () => {
   if (phone()) {
-    /* she is holding it until the four rounds are answered */
+    /* the page is shut until the four rounds are answered */
     if (session.phase === "exam") return;
     if (!nbOn()) { db.notebook = true; save(db); nbReset(); renderAll(); }
     openSheet();
@@ -1955,7 +2073,7 @@ const setTheme = t => {
 };
 $("themeBtn").onclick = () => setTheme(isLight() ? "dark" : "light");
 
-/* Know your bartender. Opened only on request — never on load, never as a
+/* Know your customer. Opened only on request — never on load, never as a
    first-run interruption. The tray is untouched, so an unserved round survives
    opening and closing this. */
 $("helpBtn").onclick = () => $("help").showModal();
