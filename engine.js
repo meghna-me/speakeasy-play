@@ -417,30 +417,54 @@ function stuck(session, rule) {
    colour is the entire rule. It does not care WHICH colour; it cares very much
    about colour. Likewise reversal-invariance is not order-invariance —
    reversing swaps first and last, so that same rule survives it too. */
-function constantWithin(rule, keyOf) {
-  const seen = new Map();
-  for (const r of allRounds(rule.space)) {
-    const k = keyOf(r), v = rule.fn(r);
+/* THE THREE PARTITIONS, defined once. Each one throws an attribute away and
+   keeps everything else: group by the sizes and colour is gone, group by the
+   colours and size is gone, sort the drinks and order is gone.
+     colour — the sizes alone decide every verdict
+     size   — the colours alone do
+     order  — only WHICH drinks are present matters, so every permutation agrees
+   The same three answer it for a rule (does she ignore this?) and for a library
+   entry (does this theory use it?), which is what keeps the regular's class hint
+   and the notebook's headers from ever disagreeing. */
+const PARTITION = {
+  colour: r => r.map(t => t.s).join(","),
+  size:   r => r.map(t => t.c).join(","),
+  order:  r => r.map(t => `${t.c}${t.s}`).sort().join(",")
+};
+
+/* The keys belong to the SPACE, not to the predicate being tested, and building
+   them was nearly all of the cost: eighty library entries each rebuilt 7,381
+   strings three times over, which measured 320ms on the full bar. Cached per
+   space they are built once — same partition, same answers, one walk. */
+const _keys = new Map();
+function partitionKeys(sp, attr) {
+  const S = spaceOf(sp);
+  let byAttr = _keys.get(S.key);
+  if (!byAttr) { byAttr = {}; _keys.set(S.key, byAttr); }
+  if (!byAttr[attr]) byAttr[attr] = allRounds(S).map(PARTITION[attr]);
+  return byAttr[attr];
+}
+
+/* Decided WITHOUT the attribute: constant inside every part of the partition
+   that throws it away. Exact, and still just a walk. */
+function decidedWithout(fn, sp, attr) {
+  const all = allRounds(sp), keys = partitionKeys(sp, attr), seen = new Map();
+  for (let i = 0; i < all.length; i++) {
+    const k = keys[i], v = fn(all[i]);
     if (!seen.has(k)) seen.set(k, v);
     else if (seen.get(k) !== v) return false;
   }
   return true;
 }
 
-/* colour is irrelevant if the sizes alone decide every verdict */
+/* An attribute a bar does not have is one nobody can be watching, so a
+   one-colour bar neither ignores colour nor uses it — the question does not
+   arise, and answering it either way produces a hint that lies. */
 const ignoresColour = rule =>
-  roundSpace(rule).cols.length >= 2 &&
-  constantWithin(rule, r => r.map(t => t.s).join(","));
-
-/* size is irrelevant if the colours alone decide it */
+  roundSpace(rule).cols.length >= 2 && decidedWithout(rule.fn, rule.space, "colour");
 const ignoresSize = rule =>
-  roundSpace(rule).sizes.length >= 2 &&
-  constantWithin(rule, r => r.map(t => t.c).join(","));
-
-/* order is irrelevant if only WHICH drinks are present matters, not their
-   arrangement — so every permutation of a round must agree */
-const ignoresOrder = rule =>
-  constantWithin(rule, r => r.map(t => `${t.c}${t.s}`).sort().join(","));
+  roundSpace(rule).sizes.length >= 2 && decidedWithout(rule.fn, rule.space, "size");
+const ignoresOrder = rule => decidedWithout(rule.fn, rule.space, "order");
 
 /* The class-level hint, or null when every class still matters. Returns the one
    that kills the most theories the player is actually still carrying, so it is
@@ -464,21 +488,244 @@ function classHint(session, rule, library) {
 /* A rival "uses" an attribute exactly when it is NOT constant within the
    partition that ignores it — the same test as above, pointed at a rival
    instead of the truth, so the hint and the check cannot disagree. */
-const notConstantWithin = (h, sp, keyOf) => {
-  const seen = new Map();
-  for (const r of allRounds(sp)) {
-    const k = keyOf(r), v = h.fn(r);
-    if (!seen.has(k)) seen.set(k, v);
-    else if (seen.get(k) !== v) return true;
+const usesColour = (h, sp) =>
+  spaceOf(sp).cols.length >= 2 && !decidedWithout(h.fn, sp, "colour");
+const usesSize = (h, sp) =>
+  spaceOf(sp).sizes.length >= 2 && !decidedWithout(h.fn, sp, "size");
+const usesOrder = (h, sp) => !decidedWithout(h.fn, sp, "order");
+
+/* ---------- the notebook ---------- */
+
+/* The page the player reads instead of holding eighty sentences in their head.
+   It promises exactly one thing — HER RULE IS ON THIS PAGE — so everything here
+   is built to keep that promise literally true, and it is a pure derivation:
+   nothing about the notebook is stored on a session or annotated onto content.
+
+   THREE THINGS THIS IS NOT BUILT ON, each deliberately.
+
+   Not on `survivors`. That deliberately excludes anything equivalent to the
+   truth, because its callers — the exam, `nameRival`, `classHint` — want rivals
+   only. A notebook built on it would strike the one row the promise is about.
+   Aliveness here is read straight off `evidence`.
+
+   Not on a hand-written family tag. A tag on each hypothesis is content that has
+   to be kept true by hand, and it drifts. The family is MEASURED instead, from
+   the same invariance tests `classHint` uses, which buys three things:
+     - it cannot drift from the predicate, because it is computed from it;
+     - it re-derives PER SPACE, so a one-colour tutorial bar simply has no
+       colour family (`usesColour` already requires two colours to compare);
+     - the headers and the regular's class hint AGREE BY CONSTRUCTION. When she
+       says "she's not looking at colour tonight", the families that go dark are
+       exactly the ones whose measured signature includes colour, because both
+       features call the same three predicates. Two features that could have
+       contradicted each other now cannot.
+
+   Not on the hypothesis list as written. Two sentences that agree on every round
+   IN THIS SPACE are one theory here, and printing both would be printing the
+   same row twice — so the page is over BEHAVIOUR-CLASSES, and the count of rows
+   is a number the player can verify by counting them. */
+
+/* A family is which attributes the verdict actually depends on. `attrs` is the
+   measured signature; `key` is stable and is what a page keys its markup off;
+   `label` is what it prints. The array order IS the display order — pinned here
+   so the page never invents one: count first, because it is the one group a
+   player can settle with a single short round, then the single attributes, then
+   the pairs.
+
+   "count" is the empty signature, and the name is exact rather than a shrug: a
+   verdict that ignores colour is fixed by the size sequence, one that ignores
+   size is fixed by the colour sequence, and over a product space any two rounds
+   of the same length are joined by one swap of each — so ignoring both means the
+   verdict is a function of LENGTH alone. That same argument makes "order" alone
+   unreachable (ignoring colour and size already forces order-invariance); it is
+   listed last for totality, so a lookup can never miss, and measured empty in
+   every space the game ships. */
+const NOTEBOOK_FAMILIES = [
+  { key: "count",             attrs: [],                          label: "count" },
+  { key: "colour",            attrs: ["colour"],                  label: "colour" },
+  { key: "size",              attrs: ["size"],                    label: "size" },
+  { key: "colour+size",       attrs: ["colour", "size"],          label: "colour and size" },
+  { key: "colour+order",      attrs: ["colour", "order"],         label: "colour and order" },
+  { key: "size+order",        attrs: ["size", "order"],           label: "size and order" },
+  { key: "colour+size+order", attrs: ["colour", "size", "order"], label: "colour, size and order" },
+  { key: "order",             attrs: ["order"],                   label: "order" }
+];
+const _familyByKey  = new Map(NOTEBOOK_FAMILIES.map(f => [f.key, f]));
+const _familyRank   = new Map(NOTEBOOK_FAMILIES.map((f, i) => [f.key, i]));
+const _familyKey    = attrs => attrs.join("+") || "count";
+
+/* MEASURED, over the rule's own space — the same three predicates `classHint`
+   asks, pointed at a library entry. `attr` names in the signature match the
+   `attr` field classHint returns, so a caller can compare them directly. */
+function familyOf(h, sp) {
+  const S = spaceOf(sp);
+  const attrs = [];
+  if (usesColour(h, S)) attrs.push("colour");
+  if (usesSize(h, S))   attrs.push("size");
+  if (usesOrder(h, S))  attrs.push("order");
+  return _familyByKey.get(_familyKey(attrs));
+}
+
+/* HOW PLAIN A SENTENCE IS, measured on the WIDEST bar: how many attributes it
+   leans on when every attribute is available. It is the tie-break that picks
+   which member of a class gets printed, and it has to be measured on the full
+   bar rather than on the bar being played, because inside one class every
+   member has the same behaviour in this space and therefore the same family —
+   the local measurement is a class invariant and cannot break any tie at all.
+
+   This is not a nicety. On rule 15's bar — one colour, two sizes — eleven
+   sentences collapse into one theory, and the lowest id of them is "it contains
+   at least one Grenadine", which on a bar where every drink IS Grenadine is a
+   nonsense way to say "there is at least 1 drink". The library is authored
+   colour-first, so the lowest id is systematically the worst sentence on
+   exactly the bars a new player meets first. Measured on the full bar the
+   count sentence uses no attribute and wins, which is the right answer. */
+const _plainness = new WeakMap();
+function plainness(h) {
+  let n = _plainness.get(h);
+  if (n === undefined) { n = familyOf(h, FULL_SPACE).attrs.length; _plainness.set(h, n); }
+  return n;
+}
+
+/* A hypothesis's verdict over every round in the space, packed one bit per
+   round. The one definition of "the same theory here" — `notebookPage` groups
+   by `key` and `notebookTruth` compares the rule against it, so the two cannot
+   drift. Bit-packed rather than a "0101" string because this is 590,480
+   predicate calls on the full bar and the signature is 80 x 7,381 characters of
+   garbage otherwise; `constant` is counted on the way past, since a packed key
+   cannot be searched for a "0". */
+function verdictsOf(fn, sp) {
+  const all = allRounds(sp);
+  const bytes = new Uint8Array((all.length + 7) >> 3);
+  let trues = 0;
+  for (let i = 0; i < all.length; i++)
+    if (fn(all[i])) { bytes[i >> 3] |= 1 << (i & 7); trues++; }
+  let key = "";
+  for (let i = 0; i < bytes.length; i += 4096)
+    key += String.fromCharCode.apply(null, bytes.subarray(i, i + 4096));
+  return { key, constant: trues === 0 || trues === all.length };
+}
+
+/* MEMOISED ON (LIBRARY, SPACE), and the memo is load-bearing rather than an
+   optimisation: without it this whole pass would run on every verdict the
+   player asks for. Measured cold on the full bar, it is not "milliseconds" —
+   590,480 predicate calls plus the family measurement, and a phone is several
+   times slower again.
+
+   Keyed by LIBRARY FIRST. The library is a parameter, the tests pass explicit
+   ones, and a subset library served the full library's cached page would be a
+   silent wrong answer. A WeakMap means an experiment's library is collected
+   with it. Then by space key, following the `_all` / `_spaces` precedent, for
+   the reason that one has: a single cache hands a tutorial the full bar. */
+const _notebooks = new WeakMap();
+function notebookOf(rule, library) {
+  const S = spaceOf(rule && rule.space);
+  let bySpace = _notebooks.get(library);
+  if (!bySpace) { bySpace = new Map(); _notebooks.set(library, bySpace); }
+  const hit = bySpace.get(S.key);
+  if (hit) return hit;
+
+  const classes = new Map();                       // signature -> member ids
+  for (const h of library) {
+    const { key, constant } = verdictsOf(h.fn, S);
+    /* An always-true or always-false sentence is not a theory anybody holds,
+       and it can never die — a row that cannot change is noise on a page whose
+       whole job is showing change. Dropped as a class, so a sentence that is a
+       tautology HERE never joins one that is not. */
+    if (constant) continue;
+    if (!classes.has(key)) classes.set(key, []);
+    classes.get(key).push(h.id);
   }
-  return false;
-};
-const usesColour = (h, sp) => sp.cols.length >= 2 &&
-  notConstantWithin(h, sp, r => r.map(t => t.s).join(","));
-const usesSize = (h, sp) => sp.sizes.length >= 2 &&
-  notConstantWithin(h, sp, r => r.map(t => t.c).join(","));
-const usesOrder = (h, sp) =>
-  notConstantWithin(h, sp, r => r.map(t => `${t.c}${t.s}`).sort().join(","));
+
+  const byId = new Map(library.map(h => [h.id, h]));
+  const page = [];
+  const sigs = new Map();                          // representative id -> signature
+  for (const [key, ids] of classes) {
+    ids.sort((a, b) => a - b);
+    /* The plainest sentence speaks for the class; lowest id only breaks a real
+       tie, so the row is still stable and deterministic. */
+    const rep = byId.get(ids.slice().sort((a, b) =>
+      plainness(byId.get(a)) - plainness(byId.get(b)) || a - b)[0]);
+    const fam = familyOf(rep, S);
+    page.push(Object.freeze({
+      id: rep.id, ids: Object.freeze(ids.slice()),
+      family: fam.key, familyLabel: fam.label, text: rep.text
+    }));
+    sigs.set(rep.id, key);
+  }
+  page.sort((a, b) => _familyRank.get(a.family) - _familyRank.get(b.family) || a.id - b.id);
+
+  const rec = { library, page, sigs, space: S };
+  bySpace.set(S.key, rec);
+  return rec;
+}
+
+/* The page itself: one row per theory, in display order. `id` is the
+   representative — the plainest member, see `plainness` — and `ids` is every
+   sentence that says the same thing here, the representative included, so a
+   page can print the rest underneath as "also".
+
+   A FRESH ARRAY every call, holding frozen rows. The page sorts the dead below
+   the living, and a caller sorting the memo in place would corrupt every later
+   read of it. */
+function notebookPage(rule, library) {
+  return notebookOf(rule, library).page.slice();
+}
+
+/* The page plus what the evidence has done to it.
+ *
+ * `alive` — the representative agrees with every item of `evidence`.
+ * `diedOn` — the INDEX INTO `evidence(session, rule)` of the first item it
+ *   contradicts, or null while alive.
+ * `standing` — how many rows are still alive, the truth's row included.
+ *
+ * EVIDENCE INDICES, so the page does not have to work them out:
+ *   0      the seed she took          -> "her opener"
+ *   1      the seed she refused       -> "her opener"
+ *   2 + k  probe k + 1                -> "round (diedOn - 1)"
+ *
+ * IT READS `evidence()` AND NOTHING ELSE, which is a guardrail rather than an
+ * implementation detail. `session.exam` survives a failed exam with every
+ * `accepted` field populated, and folding those items in here would publish the
+ * verdicts the failure screen deliberately withholds — the player would be told
+ * which items they got wrong by watching the notebook. A failed exam must leave
+ * this page byte-identical, and there is a test that says so.
+ *
+ * Built fresh every call, from frozen rows: the page sorts the dead below the
+ * living, and sorting the memo in place would corrupt it for everyone after.
+ *
+ * `standing` here and the existing `standing()` CAN DISAGREE, and neither is
+ * wrong. `standing()` counts library entries and adds one for the truth, so on a
+ * small bar it double-counts sentences that are distinct in general but one
+ * theory in that space — 80 entries collapse to 37 rows on the two-drink
+ * tutorial bar. This one counts rows, which is the number a player can check by
+ * counting the page, so it is the one the page shows. */
+function notebookState(session, rule, library) {
+  const ev = evidence(session, rule);
+  const byId = new Map(library.map(h => [h.id, h]));
+  const entries = notebookOf(rule, library).page.map(cls => {
+    const fn = byId.get(cls.id).fn;
+    let diedOn = null;
+    for (let i = 0; i < ev.length; i++)
+      if (fn(ev[i].round) !== ev[i].accepted) { diedOn = i; break; }
+    return { id: cls.id, ids: cls.ids.slice(), family: cls.family,
+             familyLabel: cls.familyLabel, text: cls.text,
+             alive: diedOn === null, diedOn };
+  });
+  return { entries, standing: entries.filter(e => e.alive).length };
+}
+
+/* Which row IS her rule. Separate from the page on purpose: the page is read
+   every turn, this is read once, at the reveal. Null if the truth is not on the
+   page at all — the library does not have to cover every predicate, and a
+   silent wrong answer would be worse than none. Tested to be non-null for every
+   shipping rule, because that is the promise the header makes. */
+function notebookTruth(rule, library) {
+  const rec = notebookOf(rule, library);
+  const sig = verdictsOf(rule.fn, rec.space).key;
+  for (const [id, s] of rec.sigs) if (s === sig) return id;
+  return null;
+}
 
 /* ---------- the share card ---------- */
 
@@ -496,7 +743,36 @@ function shareMarks(session) {
     p.call === null ? "free" : (p.call === p.accepted ? "called" : "surprised"));
 }
 
+/* WHETHER THE NOTEBOOK WAS EVER OPEN. Two mutators in `takeHint`'s shape, so the
+   page records what the player did and the engine decides what it means. There
+   is no third state to invent: a night played with the page shut is marked pro
+   on the card, a night with it open is not, and a session that recorded neither
+   is not judged at all (see shareText). */
+function openNotebook(session, now) {
+  return { ...session, openedBook: true, lastActiveAt: now ?? session.lastActiveAt };
+}
+function closeNotebook(session, now) {
+  /* Once opened, always opened — the claim is "played without it", and a player
+     who has read the page cannot unread it. */
+  return { ...session, openedBook: session.openedBook === true,
+           lastActiveAt: now ?? session.lastActiveAt };
+}
+
+/* PRO IS SESSION STATE, not an argument. It is exactly what `hints` is —
+   something the player did during this night that the card reports — so it is
+   recorded by a mutator and read back here, and the page never hand-writes
+   engine state. A sixth positional boolean was the alternative and it is the
+   wrong shape: every caller that omits `minutes` would have to pass `undefined`
+   through to reach it.
+ *
+ * THE DEFAULT IS "NOT PRO", and deliberately so. A session saved before the
+ * notebook existed was genuinely played without one, but the card must not
+ * certify what it cannot know: `openedBook` absent means unjudged, and an
+ * unjudged night prints exactly the card it printed before, byte for byte.
+ * Only a session that actually recorded playing with the notebook shut — see
+ * closeNotebook — is marked. */
 function shareText(session, rule, glyphs, title, minutes) {
+  const pro = session.openedBook === false;
   const s = score(session, rule);
   const row = shareMarks(session).map(m => glyphs[m]).join("");
   /* A failed exam was invisible: a night with two of them printed the same grid
@@ -509,7 +785,8 @@ function shareText(session, rule, glyphs, title, minutes) {
   const tail = [session.gaveUp ? "gave up" : `${s.effective} rounds`]
     .concat(s.par === null || session.gaveUp ? [] : [`par ${s.par}`])
     .concat(s.surprises.length ? [`${s.surprises.length} surprises`] : [])
-    .concat(minutes ? [`${minutes} min`] : []);
+    .concat(minutes ? [`${minutes} min`] : [])
+    .concat(pro ? ["pro"] : []);
   return `${title} #${rule.n}\n${row}${fails}\n${tail.join(" · ")}`;
 }
 
@@ -672,8 +949,9 @@ const ENGINE = {
   FREE_PROBES, EXAM_N, EXAM_PENALTY, MAX_DRINKS, MAX_STARTER_TIER, FULL_SPACE,
   allRounds, roundSpace, inSpace, roundKey, newSession, callRequired, probe, evidence, survivors,
   buildExam, examSeed, examCharge, examPenalty, declare, answerExam, nameRival, score,
-  shareMarks, shareText, suggestProbe, takeHint,
+  shareMarks, shareText, suggestProbe, takeHint, openNotebook, closeNotebook,
   standing, giveUp, stuck, classHint, ignoresColour, ignoresSize, ignoresOrder,
+  NOTEBOOK_FAMILIES, familyOf, notebookPage, notebookState, notebookTruth,
   dailyRule, isWarmUp, isLadder, isStarter, roleOf, starters, ladder,
   passRate, equivalent, competentSolverProbes, playerSolverProbes,
   shuffle, seededRng

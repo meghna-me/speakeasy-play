@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Speakeasy — About</title>
-<meta name="description" content="Where the game comes from, and why the end screen counts surprises.">
+<meta name="description" content="Where the game comes from, why the end screen counts surprises, and what the notebook is for.">
 <style>
   /* Palette is a verbatim copy of index.html's — the CSS there is inline, so
      there is nothing to share until a stylesheet exists. Change one, change
@@ -14,14 +14,14 @@
   :root{
     --bg:#14100f; --panel:#1d1917; --panel2:#262120; --line:#3a322f;
     --ink:#f2ece4; --dim:#a89c92; --faint:#7a6f67;
-    --took:#c9a227; --slid:#9a6a5c; --mark:#e0b84a;
+    --took:#c9a227; --slid:#ae7e70; --mark:#e0b84a;
     --brass:#d4a141;
   }
   /* dark is the default here too — the game stopped letting the OS choose */
   :root[data-theme="light"]{
     --bg:#f4f0e8; --panel:#fffdf9; --panel2:#ebe5d9; --line:#d8cfbe;
     --ink:#221d18; --dim:#6a6055; --faint:#918b7f;
-    --took:#8a6a12; --slid:#8a4a38; --mark:#7d5f12; --brass:#8a6a12;
+    --took:#82620a; --slid:#8a4a38; --mark:#7d5f12; --brass:#82620a;
   }
 
   *{box-sizing:border-box}
@@ -91,14 +91,20 @@
   <article class="panel">
     <h2>2, 4, 6</h2>
     <p class="seq">2, 4, 6</p>
-    <p>In 1960 Peter Wason gave people those three numbers and asked them to work out the rule behind them. They could test as many sequences as they liked. He answered only yes or no.</p>
-    <p>Almost everyone tested sequences that agreed with the rule they already suspected. 8, 10, 12 — yes. 20, 22, 24 — yes. Then they declared, and they were wrong. The rule was <em>any three increasing numbers</em>. Most people never found it, because almost nobody tried a sequence they expected him to reject.</p>
+    <p>In 1960 Peter Wason put those three numbers in front of people and asked them to work out the rule behind them. They could test as many sequences as they liked. He answered yes or no, and nothing else.</p>
+    <p>Most of them saw it straight away — numbers going up in twos — and set about checking. 8, 10, 12: yes. 20, 22, 24: yes. Every test came back yes. They got surer with each one. Then they declared, and they were wrong.</p>
+    <p>The rule was <em>any three increasing numbers</em>. It had been in plain sight from the start. They missed it because they only ever tried sequences they already expected him to accept, and a yes to a question you know the answer to is worth nothing.</p>
 
     <h2>Why the end screen counts surprises</h2>
-    <p>A round you are already sure about tells you nothing. And a round that would genuinely separate two theories you still hold is close to a coin flip by construction — so a high hit rate mostly measures how much you padded.</p>
-    <p>It shows up in playtesting: one tester called 11 out of 11 correctly on their worst-played night, and 6 out of 11 on their best.</p>
-    <p>So the card reports where she surprised you rather than how often you were right. The surprises are the rounds you learned something from.</p>
-    <p>If she keeps sending back perfectly good drinks, nothing is broken. Order something you expect her to refuse.</p>
+    <p>Same trap, different bar. Order what you are sure she'll take and her taking it teaches you nothing. Order the round that would actually settle which of two live theories is right, and you have set yourself something close to a coin flip — that is what settling it means. So calling every round correctly is rarely a sign of a good night. It is usually a sign you kept ordering safe.</p>
+    <p>It showed up in playtesting. One tester called 11 out of 11 on the night they played worst. On the night they played best, they called 6.</p>
+    <p>So the card counts where she caught you out rather than how often you were right. Those are the rounds you learned something in, and padding cannot buy you a single one.</p>
+
+    <h2>The notebook, open or shut</h2>
+    <p>Every theory she could be running is written out on one page, grouped, in plain sentences — and her rule is on it. That is a promise, and the game is built to keep it. Each round you order strikes off whatever it kills. It lies open unless you shut it.</p>
+    <p>Open, you are crossing off someone else's list. It is a proper way to play, it is meant to be comfortable, and you will still be wrong more often than you expect.</p>
+    <p>Shut, the page is empty. Before you can test a theory you have to think of it, and that is the task Wason set: not picking the sentence, but writing it. The card notes when you played that way.</p>
+    <p>Either way, if she keeps sliding back perfectly good drinks, nothing is broken and you are not doing badly. She is waiting to be asked something you don't already know the answer to. Order the round you expect her to refuse.</p>
   </article>
 
   <p class="foot">P. C. Wason, “On the failure to eliminate hypotheses in a conceptual task”, Quarterly Journal of Experimental Psychology, 1960.</p>

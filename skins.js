@@ -230,17 +230,44 @@ const TEXTURES = [
   { w:7.6, h:7.6, rot:0,  body:`<circle cx="3.8" cy="3.8" r="2" fill="{T}"/>` }
 ];
 
+/* `item` is the ITEM NOUN — what one thing on the counter is called. The
+   hypothesis sentences used to hardcode "drink", which was invisible while only
+   the rival line ever quoted one; the notebook puts all eighty on screen at
+   once, and "the largest drink is Red" over a bar of circles and squares is the
+   skin leaking. Singular and plural are both carried because the sentences need
+   both and English does not derive one from the other reliably.
+   Content is data: nothing reads this except the substitution. */
 const SKINS = {
   cocktails: { label:"cocktails", sizes:["Shot","Coupe","Highball"],
+    item:{ one:"drink", many:"drinks" },
     cols:[{name:"Grenadine",hex:"#a80f33"},{name:"Curaçao",hex:"#2b8bff"},{name:"Midori",hex:"#96ec46"}] },
-  cellar:    { label:"cellar", sizes:["Tumbler","Wine glass","Stein"],
-    cols:[{name:"Claret",hex:"#86203a"},{name:"Amber",hex:"#cd7519"},{name:"Straw",hex:"#f5d64e"}] },
+  /* THE DEFAULT. Names are a difficulty dial, not decoration — two rules here,
+     both learned from what cocktails gets wrong:
+
+     A SIZE NAMES A VESSEL, NEVER A SERVE. A "Highball" is a drink — a spirit
+     lengthened with mixer — so "a red Highball" is a category error, and a
+     reader who knows drinks stalls on it. Shot, Goblet and Mug are objects,
+     and they rank by size unprompted. "Tumbler" did not: a tumbler can be any
+     size, which is why the small one is not called one.
+
+     A COLOUR IS A COLOUR WORD. Grenadine, Curaçao and Midori are liqueurs, so
+     each costs a lookup — and the notebook puts a dozen of these sentences on
+     screen every round, so that lookup is paid a dozen times a round. Red,
+     Gold and Pale cost none, and they run dark to light in the order the hexes
+     already do.
+
+     Single words that take a bare "s": the library builds plurals as
+     `${size}s`, so "Wine glass" was rendering as "Wine glasss". Gated now. */
+  cellar:    { label:"cellar", sizes:["Shot","Goblet","Mug"],
+    item:{ one:"drink", many:"drinks" },
+    cols:[{name:"Red",hex:"#86203a"},{name:"Gold",hex:"#cd7519"},{name:"Pale",hex:"#f5d64e"}] },
   /* The control. Palette is cocktails' three hexes unchanged — already verified
      against all three simulations — so the ONLY difference between playing this
      and playing cocktails is whether the silhouette needs prior knowledge.
      Plain colour names for the same reason: "Grenadine" is a word you either
      know or spend a probe wondering about. */
   geometry:  { label:"geometry", sizes:["Circle","Triangle","Square"],
+    item:{ one:"shape", many:"shapes" },
     cols:[{name:"Red",hex:"#a80f33"},{name:"Blue",hex:"#2b8bff"},{name:"Green",hex:"#96ec46"}] }
 };;
 

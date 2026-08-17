@@ -9,8 +9,15 @@
   :root{
     --bg:#14100f; --panel:#1d1917; --panel2:#262120; --line:#3a322f;
     --ink:#f2ece4; --dim:#a89c92; --faint:#7a6f67;
-    --took:#c9a227; --slid:#9a6a5c; --mark:#e0b84a;
+    /* --slid was #9a6a5c and measured 3.48:1 on --panel2, under AA while
+       carrying the "Sent back" heading and the call button's label. */
+    --took:#c9a227; --slid:#ae7e70; --mark:#e0b84a;
     --brass:#d4a141;
+    /* text ON a brass fill, which is not the same question as brass on the bar.
+       Measured: near-black gives 7.82:1 here and only 3.62:1 on the light
+       theme's darker brass, which is under AA on the game's busiest button —
+       so light flips to paper. One token, both filled buttons. */
+    --onbrass:#1a1409;
   }
   /* Dark is the bar. A speakeasy in daylight is a different room, so the
      system preference no longer flips it — light is a deliberate choice the
@@ -18,7 +25,10 @@
   :root[data-theme="light"]{
     --bg:#f4f0e8; --panel:#fffdf9; --panel2:#ebe5d9; --line:#d8cfbe;
     --ink:#221d18; --dim:#6a6055; --faint:#918b7f;
-    --took:#8a6a12; --slid:#8a4a38; --mark:#7d5f12; --brass:#8a6a12;
+    /* --took/--brass were #8a6a12: 4.45:1 on --bg, just under AA, and they
+       carry the header buttons and the "?" that is now the route to the rules. */
+    --took:#82620a; --slid:#8a4a38; --mark:#7d5f12; --brass:#82620a;
+    --onbrass:#fffdf9;   /* 4.98:1 on this brass, against near-black's 3.62 */
   }
 
   *{box-sizing:border-box}
@@ -31,7 +41,15 @@
   }
   h1{font-family:ui-serif,Georgia,serif;font-size:24px;letter-spacing:-.02em;margin:0}
   .sub{color:var(--dim);font-size:13px;margin:2px 0 0}
-  .bar{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:12px}
+  /* THE FRAME, and the only sentence on the page that is true of every night.
+     Full width and outside the columns: in the masthead it would have been a
+     third of a column wide and eight lines tall on a phone. */
+  .premise{color:var(--dim);font-size:13.5px;line-height:1.45;margin:0 0 12px;max-width:70ch}
+  .premise strong{color:var(--ink);font-weight:600}
+  /* the night's name, in the ledger's header */
+  .lday{color:var(--dim);font-size:12px;margin:0 0 7px;font-variant-numeric:tabular-nums}
+  #hint{margin:9px 0 0}
+  .bar{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:10px}
   .panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:12px}
 
   /* You cannot deduce from evidence you have to scroll to. The order you are
@@ -39,64 +57,129 @@
      screen at the same time. */
   .wrap{display:grid;grid-template-columns:minmax(0,1fr) 356px;gap:14px;align-items:start}
   .wrap .panel{margin-bottom:0}
+  /* Before the first round #say holds nothing, and on a phone it is a GRID ITEM,
+     so an empty one still books a row and the 8px gap above it — at exactly the
+     moment the stack is tightest. renderSay empties it with innerHTML = "". */
+  #say:empty{display:none}
   #examArea,#doneArea{max-width:560px;margin:0 auto}
-  @media (min-width:901px){
-    .rail{position:sticky;top:14px}
-    .ledger{max-height:calc(100vh - 96px);display:flex;flex-direction:column}
-    .ledger .logs{overflow-y:auto;min-height:0}
-  }
-  /* PHONE. The desktop rule is that you cannot deduce from evidence you have to
-     scroll to, and a single stack broke it again on a 375x667 screen: 864px of
-     content in 667px of glass, so the round you were building sat above the
-     fold and the ledger sat below it while you chose. Three savings, measured:
-     picker cells 96 -> 56px (120px), the legend hidden (80px), and the ledger
-     REORDERED to sit between the round and the picker, which saves nothing and
-     is the entire point. display:contents dissolves the bar panel so its
-     children become grid items and the ledger can slot in among them. */
-  @media (max-width:900px){
-    .wrap{grid-template-columns:1fr;gap:8px}
-    .wrap > main{display:contents}
-    #say{order:1} #tray{order:2} .rail{order:3} #picker{order:4}
-    #controls{order:5} #hint{order:6} #strip{order:7}
-    .legend{display:none}            /* names live on the reveal and in About */
-    .tray{min-height:clamp(64px,11vh,86px);gap:8px;padding:8px 10px 6px}
-    .picker{gap:6px;margin-top:0}
-    .pcell{min-height:clamp(48px,8.5vh,68px);padding:6px 3px 5px}
-    .ledger{padding:9px}
-    .ledger .logs{max-height:20vh;overflow-y:auto}
-    .logcol{min-height:0}
-    /* the column headings already say took and sent back, and the exam is
-       explained when it starts — neither sentence earns its height here */
-    #prompt,.ledger .sub{display:none}
-    #declare{padding:8px 14px}
-    .say{padding:8px 10px;font-size:14px;margin-bottom:0}
-    #hint{font-size:12px;margin-top:4px}
-  }
+  /* the rail is the notebook's home; a sheet supplies its own title, so the pad
+     drops that while it is a guest there — but it keeps its paper, because the
+     paper IS the notebook and a sheet full of theories on the room's own panel
+     colour is a different object. It loses the tilt and the shadow: a pad lying
+     on the bar is at an angle, a pad held up in front of you is not.
+     Both viewport blocks live at the FOOT of this stylesheet — see the note
+     down there. */
+  #nbSheet #notebook{margin:0;transform:none;box-shadow:none;border:0;border-radius:8px}
+  #nbSheet .nbtitle{display:none}
+  /* with the title gone the count is the only thing in the head, and
+     space-between parks a lone child at the START of the row */
+  #nbSheet .nbhead{justify-content:flex-end}
+  /* THEORY ROWS ARE <p>, AND `.sheet p` OUTRANKS `.nbrow` — two classes to one.
+     So in the sheet every sentence silently took the dialog's 14px/1.55 and an
+     11px bottom margin: 34px a row against a 22px rule pitch, which is how it
+     was caught, the sentences visibly floating off the lines. Pinned by id. */
+  #nbSheet .nbrow{margin:0;font-size:14px;line-height:22px}
+  #nbSheet .nbwhy{font-size:11.5px;line-height:1.4;margin:3px 0 8px}
+  /* she has taken the page back; what the page is FOR is not the news */
+  #examArea .nbwhy{display:none}
+  /* CLOSING THE NOTEBOOK, from inside the notebook. It rides in the panel, so
+     it is there in the rail and there in the phone's sheet, and closing means
+     the same thing in both. On the pad it reads in the pad's own ink, so it
+     looks like part of the page rather than a control stuck onto it.
+     Not on screen once she has taken the page back, or once the night is over:
+     there is nothing left to close. */
+  .nbfoot{margin-top:8px;border-top:1px solid var(--line);padding-top:4px}
+  .nbshut{display:block;width:100%;min-height:44px;text-align:left;
+    background:none;border-color:transparent;color:var(--dim);font-size:12.5px}
+  .nbshut:hover{color:var(--ink);border-color:var(--line)}
+  #examArea .nbfoot,#doneArea .nbfoot{display:none}
   .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
   button,select,a.btn-quiet{font:inherit;color:var(--ink);background:var(--panel2);
     border:1px solid var(--line);border-radius:10px;padding:10px 14px;cursor:pointer}
   button:active{transform:translateY(1px)}
   button:focus-visible,select:focus-visible,a:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
-  .btn-go{background:var(--brass);border-color:var(--brass);color:#1a1409;font-weight:650}
+  .btn-go{background:var(--brass);border-color:var(--brass);color:var(--onbrass);font-weight:650}
   .btn-yes{border-color:var(--took);color:var(--took);font-weight:600}
   .btn-no{border-color:var(--slid);color:var(--slid);font-weight:600}
+  /* THE CALL IS THE PRIMARY ACTION, so it carries the primary weight — and both
+     halves of it do, from the first round to the last. It used to be a brass
+     `Order it` that VANISHED after two rounds and came back as a pair of quiet
+     outlines, so the game lost its filled button exactly where it got harder
+     and the only one left pointed at the exam. Which button is which is carried
+     by the words: they are opposite sentences, not two shades of the same one. */
+  .btn-call{background:var(--brass);border-color:var(--brass);color:var(--onbrass);font-weight:650}
+  /* THE EXAM IS NOT THE PRIMARY ACTION. It was the loudest thing on the rail —
+     a filled brass button pointing at the one move that can cost you rounds —
+     while the actual move, ordering a round, was a quiet outline. So it is an
+     edge until the evidence says the player can win it: renderStanding fills it
+     the moment exactly one theory is left, which is the moment the four unseen
+     rounds are all determined and the exam is a formality. */
+  .btn-edge{background:transparent;border-color:var(--line);color:var(--dim);font-weight:600}
+  .btn-edge:hover{color:var(--ink);border-color:var(--brass)}
+  /* an answered exam item. Not a <p> any more — it is the way back. */
+  .said{border-style:dashed;color:var(--dim);text-align:left}
+  .said:hover{color:var(--ink);border-color:var(--brass)}
+  .said::after{content:" · change";color:var(--brass);font-size:12px}
   .btn-quiet{background:transparent;color:var(--dim);border-color:transparent;padding:6px 8px;font-size:13px;text-decoration:none}
   .btn-quiet.icon{display:inline-flex;align-items:center;justify-content:center;padding:5px;line-height:0}
   .btn-quiet.icon:hover{color:var(--brass)}
-  /* the ? carries a glyph rather than an svg, so it needs its line-height back */
-  #helpBtn,#helpX{line-height:1;padding:5px 9px;font-size:15px}
+  /* the notebook toggle's on-state. aria-pressed carries it for a screen
+     reader; brass PLUS a brass border carries it for everyone else, because a
+     state told only in colour is the one thing this palette may not do */
+  .btn-quiet[aria-pressed="true"]{color:var(--brass);
+    border-color:color-mix(in srgb,var(--brass) 45%,transparent)}
+  /* the ✕ carries a glyph rather than an svg, so it needs its line-height back */
+  #helpX{line-height:1;padding:5px 9px;font-size:15px}
 
-  /* Know your bartender. Sized so the whole panel fits a 375x667 phone without
-     the reader scrolling past the fold to find the how-to-play list. */
-  dialog#help{border:1px solid var(--line);border-radius:14px;background:var(--panel);
+  /* THE RULES, WHERE THE QUESTION GETS ASKED. This was a bare glyph in the
+     header at the same visual weight as "skin", and behind it sits the one
+     paragraph that says what she can possibly care about. It now sits inside
+     the sentence that raises the question, and it looks pressable rather than
+     printed — a ring, not a glyph floating in prose.
+     TWO BOXES, ON PURPOSE. The BUTTON is 44x44, which is the thumb target the
+     tap gate wants; the RING is the 24px circle drawn by the span inside it.
+     The negative margins keep the hit box from prising the line apart, so the
+     target is generous and the type is untouched. Declared after the `button`
+     block above, or `button:focus-visible` would outrank the ring's own focus
+     ring at equal specificity — the cascade trap this stylesheet is full of. */
+  .qmark{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;
+    width:44px;height:44px;margin:-12px -10px;padding:0;border:0;background:none;
+    vertical-align:middle;cursor:pointer}
+  .qmark span{display:flex;align-items:center;justify-content:center;
+    width:24px;height:24px;border-radius:50%;color:var(--brass);
+    border:1px solid color-mix(in srgb,var(--brass) 60%,transparent);
+    font-size:13px;font-weight:700;line-height:1;transition:background .15s,border-color .15s}
+  .qmark:hover span{border-color:var(--brass);
+    background:color-mix(in srgb,var(--brass) 15%,transparent)}
+  .qmark:focus-visible{outline:none}
+  .qmark:focus-visible span{outline:2px solid var(--brass);outline-offset:2px}
+
+  /* the colophon. Padded to a 44px target of its own, since it is a link a
+     thumb has to find at the very bottom of a long phone page. */
+  .foot{margin-top:22px;text-align:center}
+  .foot a{display:inline-block;padding:12px 10px;font-size:12.5px;color:var(--dim);
+    text-decoration-color:color-mix(in srgb,var(--brass) 60%,transparent);
+    text-underline-offset:3px}
+  .foot a:hover{color:var(--brass)}
+
+  /* THE SHEET — the game's one dialog box, worn by two elements now.
+     Sized so the whole panel fits a 375x667 phone without the reader scrolling
+     past the fold to find the how-to-play list.
+
+     This was id-scoped (`dialog#help`, `#help p`, `#help a`) while there was
+     only ever one dialog, so the notebook's sheet inherited nothing at all and
+     the choice was duplicate the block or generalise it. Generalised: one box,
+     one backdrop, one radius. The `!important` on .helplab below is still
+     load-bearing — `.sheet p` outranks a bare class either way. */
+  dialog.sheet{border:1px solid var(--line);border-radius:14px;background:var(--panel);
     color:var(--ink);padding:0;max-width:min(520px,calc(100vw - 28px));
     max-height:min(86vh,760px);overflow:auto}
-  dialog#help::backdrop{background:rgba(0,0,0,.62)}
+  dialog.sheet::backdrop{background:rgba(0,0,0,.62)}
   .helpbox{padding:16px 18px 18px}
   .helphead{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:10px}
   .helphead h2{font-family:ui-serif,Georgia,serif;font-size:19px;font-weight:600;margin:0;letter-spacing:-.01em}
-  #help p{margin:0 0 11px;font-size:14px;line-height:1.55}
-  #help p.sub{font-size:12.5px}
+  .sheet p{margin:0 0 11px;font-size:14px;line-height:1.55}
+  .sheet p.sub{font-size:12.5px}
   .helplab{color:var(--brass);font-size:12px !important;text-transform:uppercase;
     letter-spacing:.07em;margin:16px 0 6px !important}
   .helpex{margin:0 0 4px;padding-left:18px;list-style:none}
@@ -109,18 +192,162 @@
      visited-purple, which is both off-palette and colour as the sole channel.
      Same treatment as about.html: --ink text so it outranks the --dim sentence
      around it, brass in the underline, and the underline is what says "link". */
-  #help a{color:var(--ink);text-decoration-color:var(--brass);text-underline-offset:3px;
+  .sheet a{color:var(--ink);text-decoration-color:var(--brass);text-underline-offset:3px;
     transition:color .15s}
-  #help a:hover{color:var(--brass)}
-  #help a:focus-visible{outline:2px solid var(--brass);outline-offset:2px;border-radius:6px}
+  .sheet a:hover{color:var(--brass)}
+  .sheet a:focus-visible{outline:2px solid var(--brass);outline-offset:2px;border-radius:6px}
   .helphow{margin:0;padding-left:19px;font-size:14px;line-height:1.55}
   .helphow li{margin-bottom:8px}
   .helphow li::marker{color:var(--brass);font-weight:600}
   /* her two opening examples are evidence like any other, so they sit at the top
      of the same ledger — marked as given rather than earned, not in a second box */
   .given{border-bottom:1px dashed var(--line);padding-bottom:7px;margin-bottom:5px}
-  .given .lab{font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--faint);margin-bottom:2px}
+  .given .lab{font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--dim);margin-bottom:2px}
   .given .mini{min-height:40px;align-items:flex-end}
+
+  /* ---------- THE NOTEBOOK, WHICH IS A PAD ON THE BAR ----------
+     Paper ground, ruled lines, a red margin rule, a pen strike.
+     HANDWRITING IS CHROME ONLY — the pad's title, the count, the family
+     labels, the "crossed out (N)" summaries and the died-on notes. THE THEORY
+     SENTENCES STAY IN THE GAME'S SERIF. That split is not a compromise, it is
+     the measurement: this repo already found that decorative presentation costs
+     reading effort (the geometry skin beat the cocktail glasses), and these
+     sentences are re-read every single round. The scrawl is on the furniture
+     you glance at; the serif is on the words you work with.
+
+     THE PALETTE IS REBOUND, NOT REPLACED. #notebook re-points the room's own
+     tokens at paper values for its own subtree, so every rule below — and the
+     three-channel death, and the brass reveal — keeps reading var(--ink),
+     var(--dim), var(--slid), var(--brass) and lands on paper automatically.
+     One place to change, and light and dark are the same two lines.
+     Every ink here clears AA on both papers and holds up under protanopia,
+     deuteranopia, tritanopia and greyscale — measured, lowest is 4.74:1. */
+  #notebook{
+    --paper:#efe6d2; --paper2:#e4d9be; --prule:#cdbfa0;
+    --pen:#23313f; --pencil:#6a6053; --padred:#9d3b32; --padbrass:#725609;
+    --ink:var(--pen); --dim:var(--pencil);
+    --slid:var(--padred); --brass:var(--padbrass); --mark:var(--padred);
+    --line:var(--prule); --panel:var(--paper); --panel2:var(--paper2);
+    color:var(--pen);
+    /* the pad's own ground: a warm wash where the bar light falls on it */
+    background:
+      radial-gradient(120% 70% at 88% 2%, color-mix(in srgb,var(--paper2) 85%,transparent), transparent 60%),
+      var(--paper);
+    /* a bound down the left, torn corner top-right */
+    border-radius:3px 12px 3px 3px;
+    /* 26px of left margin so the sentences start clear of the red rule at 18 */
+    padding:9px 12px 10px 26px;
+    position:relative;
+    box-shadow:0 8px 18px rgba(0,0,0,.45);
+    /* it was put down in a hurry. Visual only — the layout box does not turn,
+       so nothing reflows and nothing can be pushed off the right edge. */
+    transform:rotate(-.35deg);
+  }
+  :root[data-theme="light"] #notebook{--paper:#f6edd4; --paper2:#ece0c1; --prule:#d3c4a2;
+    box-shadow:0 6px 14px rgba(70,55,25,.16)}
+  /* the red margin rule */
+  #notebook::before{content:"";position:absolute;left:18px;top:0;bottom:0;width:1px;
+    background:color-mix(in srgb,var(--padred) 42%,transparent)}
+  /* THE HANDWRITING, and the only place it is allowed. No webfont: the deployed
+     site makes zero network requests, so this is three system hands and a
+     cursive fallback, and every one of them degrades to the UI sans without
+     moving a single box — nothing here is sized off the glyphs. */
+  /* THE COUNT IS NOT IN THE SCRAWL, and that is not an aesthetic preference.
+     Bradley Hand draws 7 with a European crossbar, so at 13px "17 still stand"
+     reads as a struck-through 17 — inside a panel whose entire visual language
+     is that a line through something means the evidence killed it. The one
+     number the player reads at a glance cannot wear the mark for "dead". */
+  .nbtitle,.nblab,.nbdied,.nbmore>summary{
+    font-family:"Bradley Hand","Segoe Print","Comic Sans MS",cursive}
+  .nbhead{display:flex;justify-content:space-between;align-items:baseline;gap:9px;
+    height:22px;margin:0}
+  .nbtitle{font-size:16px;font-weight:700;line-height:22px;letter-spacing:.01em}
+  /* tabular-nums so a count that ticks 13 -> 9 -> 3 does not shuffle sideways */
+  .nbcount{color:var(--padred);font-size:13px;font-weight:700;white-space:nowrap;
+    line-height:22px;font-variant-numeric:tabular-nums}
+  /* outside .nbbody, so it is free of the 22px rule grid and can set its own
+     leading — it is the one paragraph on the pad nobody re-reads */
+  .nbwhy{color:var(--dim);font-size:11.5px;line-height:1.4;margin:3px 0 8px}
+  /* THE RULED LINES LIVE ON THE SCROLLER, NOT ON THE PAD. Painted on #notebook
+     they would stand still while the list scrolled under them and every
+     sentence would drift off its line; background-attachment:local pins them to
+     the content instead. 22px pitch, and every block below is a whole number of
+     22s so the words sit ON the rules rather than between them. */
+  .nbbody{min-height:0;overflow-y:auto;
+    background-image:repeating-linear-gradient(to bottom, transparent 0 21px,
+      color-mix(in srgb,var(--prule) 62%,transparent) 21px 22px);
+    background-attachment:local}
+  .nblab{color:var(--brass);font-size:11.5px;text-transform:uppercase;letter-spacing:.07em;
+    line-height:22px;margin:0;font-variant-numeric:tabular-nums}
+  /* A FAMILY ADDS NO BOX OF ITS OWN, and neither does its label. On a ruled pad
+     every block has to be a whole number of 22px lines or the sentences drift
+     off the rules, so the separation between families is carried by the label's
+     own brass and its own line — never by a margin. That is also where the
+     height comes from: the blank line between families used to cost 18px six
+     times over, and losing it is most of the 96px this pad saves. */
+  .nbfam{margin:0}
+  /* A dead theory was sent back, so it dies in the sent-back colour — which on
+     paper is the red pen. Never --faint: that token fails AA and this is real
+     text a player is expected to read. And state is never carried by colour
+     alone — struck AND dimmed AND repositioned, the same law as the drinks.
+     The strike is text-decoration and not an absolutely-positioned bar: rows
+     wrap (measured — 1 of 18 on daily 12, more in the phone sheet), and a bar
+     strikes one line of a three-line theory and reads as a smudge. */
+  .nbrow{font-size:14px;line-height:22px;margin:0}
+  .nbtext{font-family:ui-serif,Georgia,serif;color:var(--ink);
+    text-decoration:line-through;text-decoration-thickness:2px;
+    text-decoration-skip-ink:none;
+    text-decoration-color:transparent;transition:color .25s, text-decoration-color .25s}
+  .nbrow.dead .nbtext{color:var(--dim);text-decoration-color:var(--slid)}
+  /* outside .nbtext, or the strike would run through the note explaining it */
+  .nbdied{display:block;font-size:11.5px;line-height:22px;color:var(--dim)}
+  /* THE REVEAL. The help dialog's hanging brass tick and a faint brass wash,
+     and nothing else on the page moves — the night stays as the player left it.
+     Zero vertical padding: on a ruled pad the wash then fills exactly the line
+     the sentence sits on, like a highlighter run along one rule. */
+  .nbrow.truth{position:relative;padding:0 8px 0 22px;border-radius:7px;
+    background:color-mix(in srgb,var(--brass) 10%,transparent)}
+  .nbrow.truth::before{content:"·";position:absolute;left:9px;color:var(--brass);font-weight:700}
+  /* Rows are prose, not controls. These summary lines are the only thing in the
+     panel you can touch, so they are the only thing that gets a tap target —
+     44px, which is two ruled lines exactly. */
+  .nbmore{margin:0}
+  .nbmore>summary{display:flex;align-items:center;min-height:44px;cursor:pointer;
+    list-style:none;color:var(--dim);font-size:11.5px}
+  .nbmore>summary::-webkit-details-marker{display:none}
+  .nbmore>summary::before{content:"▸";color:var(--brass);margin-right:7px;font-size:10px}
+  .nbmore[open]>summary::before{content:"▾"}
+  .nbmore>summary:focus-visible{outline:2px solid var(--brass);outline-offset:2px;border-radius:6px}
+  /* the count on a phone, living in a line that already exists. Outside the pad,
+     so it keeps the room's brass rather than the pad's. */
+  .nbtap{font:inherit;color:var(--brass);background:none;border:0;border-bottom:1px dotted var(--brass);
+    border-radius:0;padding:3px 0;margin:0;cursor:pointer;font-weight:650;
+    font-variant-numeric:tabular-nums}
+  .a-flick{animation:flick .5s ease-out both}
+  /* THE SOLVE SHOULD FEEL LIKE ONE. Everything else here is deliberately cool —
+     she never congratulates you — so the single moment allowed to be warm is
+     the one where you had her. The headline lands first and the answer washes
+     in behind it a beat later, which is the order the player wants them in:
+     "I got it", then "here's what it was". Transform, opacity and a background
+     size only, so it composites and nothing reflows. */
+  .a-won .headline{animation:wonIn .42s cubic-bezier(.2,.9,.3,1.25) both}
+  .a-won .reveal{animation:wonWash .55s ease-out .18s both;
+    background-image:linear-gradient(to right,
+      color-mix(in srgb,var(--brass) 20%,transparent), transparent);
+    background-repeat:no-repeat;border-radius:6px;padding:2px 6px;margin-left:-6px}
+  @keyframes wonIn{
+    0%{transform:translateY(7px) scale(.97);opacity:0} 100%{transform:none;opacity:1}}
+  @keyframes wonWash{
+    0%{opacity:0;background-size:0% 100%} 100%{opacity:1;background-size:100% 100%}}
+  /* the pad shuts like a book: it tips away from the reader on its left edge
+     and dims. Transform and opacity only, so this composites and never asks
+     the sticky rail to relayout while the ledger grows to fill the space. */
+  .a-shut{animation:shutBook .18s cubic-bezier(.4,0,.7,.4) both;
+    transform-origin:0% 50%;will-change:transform,opacity}
+  @keyframes shutBook{
+    0%{transform:perspective(700px) rotateY(0) scaleY(1);opacity:1}
+    100%{transform:perspective(700px) rotateY(-72deg) scaleY(.94);opacity:0}}
+  @keyframes flick{0%{color:var(--mark)}100%{color:var(--brass)}}
 
   /* the bar top: glasses stand on a lit surface rather than floating in a box */
   .tray{display:flex;gap:14px;align-items:flex-end;min-height:clamp(96px,15vh,132px);padding:11px 12px 8px;
@@ -129,7 +356,7 @@
       radial-gradient(120% 70% at 50% 100%, color-mix(in srgb,var(--brass) 15%,transparent), transparent 68%),
       linear-gradient(var(--panel2), color-mix(in srgb,var(--panel2) 70%, var(--bg)));
     box-shadow:inset 0 -1px 0 color-mix(in srgb,var(--brass) 30%,transparent)}
-  .tray.empty::after{content:"asking for nothing is a fair question";color:var(--faint);font-size:12px;align-self:center}
+  .tray.empty::after{content:"asking for nothing is a fair question";color:var(--dim);font-size:12px;align-self:center}
   .picker{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
   .pcell{display:flex;align-items:flex-end;justify-content:center;min-height:clamp(74px,12vh,116px);padding:9px 4px 7px;
     border:1px solid var(--line);border-radius:10px;cursor:pointer;
@@ -144,6 +371,9 @@
   /* a little ground shadow so a glass reads as standing, not pasted on */
   .tray .tok,.pcell .tok{filter:drop-shadow(0 2px 3px rgba(0,0,0,.45))}
   :root[data-theme="light"] .tray .tok,:root[data-theme="light"] .pcell .tok{filter:drop-shadow(0 2px 3px rgba(60,45,20,.22))}
+  /* above 900px the legend names the bar once; the cells stay wordless */
+  .pname{display:none;font-size:10px;line-height:12px;color:var(--dim);
+    max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .legend{display:flex;gap:6px 14px;flex-wrap:wrap;align-items:flex-end;margin-top:10px}
   .leg{display:flex;align-items:flex-end;gap:5px;font-size:11px;color:var(--dim)}
   .mini{display:flex;gap:5px;align-items:flex-end}
@@ -184,7 +414,16 @@
   .entry:last-child{border-bottom:0}
   /* the column already says what she did — this mark says only whether YOU knew */
   .mk{font-size:11px;width:15px;text-align:center;font-weight:700;flex:0 0 auto}
-  .mk.hit{color:var(--mark)} .mk.miss{color:var(--dim);opacity:.7} .mk.free{color:var(--faint);opacity:.5;font-weight:400}
+  /* THE SURPRISE IS THE BRIGHT ONE. It was the other way round — a lit ✓ for a
+     call you got right and a greyed-out ✗ for one she caught you on — which
+     contradicts the share card, the end screen and about.html, all three of
+     which say the surprises are the rounds you learned something in. A night of
+     nothing but ✓ usually means you only ordered what you were already sure of.
+     Colour is not the channel: ✓ / ! / – are three different glyphs, and the
+     names are the engine's own — called, surprised, free. */
+  .mk.called{color:var(--dim);font-weight:400}
+  .mk.surprised{color:var(--mark);font-weight:800}
+  .mk.free{color:var(--dim);font-weight:400}
 
   .say{padding:11px 13px;border-radius:10px;font-size:15px;margin-bottom:11px}
   .say.y{background:color-mix(in srgb,var(--took) 13%,transparent);border:1px solid color-mix(in srgb,var(--took) 42%,transparent)}
@@ -198,11 +437,166 @@
   .card .num{font-size:11px;color:var(--dim);letter-spacing:.14em;text-transform:uppercase}
   .card .glyphs{font-size:25px;letter-spacing:4px;margin:12px 0 10px;line-height:1.35;word-break:break-word}
   .card .line{font-size:15px;font-weight:650;font-variant-numeric:tabular-nums}
-  .card .key{font-size:11px;color:var(--faint);margin-top:8px}
+  .card .key{font-size:11px;color:var(--dim);margin-top:8px}
   .reveal{font-family:ui-serif,Georgia,serif;font-size:18px;margin:0 0 6px}
   .hidden{display:none !important}
   code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.9em;
     background:var(--panel2);padding:1px 5px;border-radius:4px}
+
+  /* ================= THE TWO VIEWPORT BLOCKS =================
+     THEY LIVE HERE, LAST, AND THAT IS THE WHOLE POINT. Both used to sit at the
+     top beside .wrap, where they read well and did nothing: a media query has
+     no specificity of its own, so `.legend{display:none}` inside one loses to a
+     plain `.legend{display:flex}` written 160 lines further down. Measured at
+     375x667 before the move — .legend computed flex, .pcell 80px against the
+     56.7px asked for, .tray 100px against 73.4px — about 163px of budget that
+     the file believed it had spent and had not. Anything added below this point
+     that names one of these selectors silently wins. Don't. */
+  @media (min-width:901px){
+    /* The height budget lives on the RAIL, not on the ledger. It used to sit on
+       the ledger, which claimed the whole column — so appending the notebook
+       below it did not give the notebook "the remaining height", it gave it
+       none. The rail is the flex column now; the ledger keeps its flex and its
+       internal scroll and shrinks when it has to. `.wrap .panel{margin-bottom:0}`
+       means the two would otherwise touch, hence the gap.
+
+       THE SPLIT: giving the notebook "what is left" was still not enough — the
+       ledger took its natural height first, so at 1280x900 the ledger got 302px
+       and the pad 240px, and the pad showed 3 of 13 theories. Seeing the list is
+       the pad's entire value. So the FLOOR is half the rail: 100vh - 96 of rail,
+       less the 12px gap, halved, is calc(50vh - 54px). min-height is a hard stop
+       in flex shrinking, so the ledger gives way into its own scroll and the pad
+       can still take more than half when the ledger is short. Deliberately not a
+       max-height on .ledger: capping the ledger is the mistake this rail already
+       made once in the other direction. */
+    /* 96px was 14 of body padding plus the masthead it used to sit under. The
+       masthead lost its day line and gained the frame line, so the rail now
+       starts at 95px and a 96px allowance ran the pad off the bottom edge of
+       the glass. 118 measured: the pad ends at 877 of 900 with the page's own
+       28px foot below it. */
+    .rail{position:sticky;top:14px;display:flex;flex-direction:column;gap:12px;
+      max-height:calc(100vh - 118px)}
+    .ledger{flex:0 1 auto;min-height:0;display:flex;flex-direction:column}
+    .ledger .logs{overflow-y:auto;min-height:0}
+    /* SCOPED TO THE RAIL, because the same node is also the exam's one-line
+       panel and the reveal's page. Unscoped, the exam's "she's holding your
+       notebook" sentence was floored at half the viewport — 400px of blank
+       ruled paper under one line. */
+    .rail #notebook{flex:1 1 auto;min-height:calc(50vh - 54px);display:flex;flex-direction:column}
+    /* 44px is a TOUCH guideline and there is no touch here. AA's floor is 24px;
+       at 44 a rail of six collapsed families is 264px of summary and nothing
+       else. Phones keep the 44. Same for the close button under the list: the
+       rail's height is the pad's whole value and 44px of it is two theories. */
+    .nbmore>summary{min-height:30px}
+    .nbshut{min-height:30px}
+    /* only above 900px is the panel itself on screen, so only there is the count
+       that opens it redundant */
+    .nbtap{display:none} #nbCountSlot{display:none}
+  }
+
+  /* WIDE — the ledger and the pad stop sharing one column's height.
+     Stacked, they split it: on a laptop the rail is ~780px, so each panel gets
+     roughly 390 and BOTH clip — the ledger slices its glasses mid-image and the
+     pad slices its last theory. That is a HEIGHT problem, and no amount of
+     width fixes it while they are stacked. Side by side, each takes the full
+     rail instead of half, and the clipping simply stops.
+
+     1400px because 1fr + 340 + 340 + two 14px gaps needs about that before the
+     play column is squeezed; below it the stacked rail above is still right.
+     `display:contents` drops the .rail box so its two children become grid
+     items directly — each then carries its own sticky and its own budget. */
+  @media (min-width:1400px){
+    /* the 1060px cap is right for two columns and starves three — it left the
+       play column ~320px, wrapping the two call buttons onto separate lines.
+       A third column costs 340 + a 14px gap, so the cap moves by exactly that
+       and the play column keeps the width it had. */
+    body{max-width:1414px}
+    .wrap{grid-template-columns:minmax(0,1fr) 340px 340px}
+    .rail{display:contents}
+    .ledger,.rail #notebook{position:sticky;top:14px;
+      max-height:calc(100vh - 118px);min-height:0;
+      display:flex;flex-direction:column}
+    /* the floor was there to stop the ledger eating the pad's share. In two
+       columns there is no share to take, so the pad simply fits its content
+       and scrolls only when the viewport is genuinely too short. */
+    .rail #notebook{flex:0 1 auto}
+  }
+  /* PHONE. The desktop rule is that you cannot deduce from evidence you have to
+     scroll to, and a single stack broke it again on a 375x667 screen: 864px of
+     content in 667px of glass, so the round you were building sat above the
+     fold and the ledger sat below it while you chose. Savings, measured:
+     picker cells 96 -> 56px, the legend hidden, and the ledger REORDERED to sit
+     between the round and the picker, which saves nothing and is the entire
+     point. display:contents dissolves the bar panel so its children become grid
+     items and the ledger can slot in among them. */
+  @media (max-width:900px){
+    .wrap{grid-template-columns:1fr;gap:8px}
+    .wrap > main{display:contents}
+    /* #examArea is a grid item too now, and it leads: her four rounds first,
+       then the ledger she is letting you keep */
+    #examArea{order:0}
+    #say{order:1} #tray{order:2} .rail{order:3} #picker{order:4}
+    #controls{order:5} #hint{order:6} #strip{order:7}
+    .legend{display:none}            /* every cell names itself instead — below */
+    .tray{min-height:clamp(52px,8.5vh,72px);gap:8px;padding:8px 10px 6px}
+    .picker{gap:6px;margin-top:0}
+    /* A NAME UNDER EVERY GLASS, because .legend is gone down here and the pad
+       says "it contains at least one Coupe" every round. The cell is a column
+       now: glass, then its two words. Measured at 375x667 — the tallest glass
+       in a cell is 37.4px and the cell's content box was 45.7px, so the name
+       needed 14px it did not have; 9.2vh buys it and the tighter padding gives
+       half of that back. align-items is the CROSS axis, and turning the cell on
+       its side turned the base rule's flex-end from "stand the glass on the
+       counter" into "shove it against the right wall". */
+    .pcell{min-height:clamp(52px,9.2vh,74px);padding:4px 3px 4px;
+      flex-direction:column;justify-content:flex-end;align-items:center;gap:2px}
+    .pname{display:block}
+    .ledger{padding:9px}
+    /* the two columns are already headed "She took" and "Sent back", and at the
+       start the seeds are the only things in them — the label is 14px of the
+       one budget that has to buy the names above */
+    .given .lab{display:none}
+    /* THE PHONE'S ONE POT. Everything above the fold is paid for out of this
+       scroller and the seed row inside it — 20vh, a 40px seed row and an "on
+       the house" caption were what the stack could afford before the frame
+       line, the second call button and nine drink names existed, and all three
+       of those buy more than four rounds of ledger does. Trimmed so the natural
+       height DROPS rather than the cap clipping it: measured, the opening logs
+       are 97px against a 100px cap, so her two openers are still whole. */
+    .logcol{padding:6px;min-height:0}
+    .ledger .logs{max-height:15vh;overflow-y:auto}
+    .given .mini{min-height:32px}
+    /* the column headings already say took and sent back, and the exam is
+       explained when it starts — neither sentence earns its height here */
+    #prompt,.ledger .sub{display:none}
+    /* except the count, which in pro mode is the only one on the phone at all —
+       in standard mode renderStanding puts .hidden on it and that wins */
+    .ledger #standing{display:block}
+    .lday{font-size:11.5px;margin:0 0 3px}
+    /* The frame is worth its lines on a phone too, but not at desktop leading.
+       12px and not 12.5: measured at 375, the sentence is three lines at 12.5px
+       and two at 12px — 19px, which is most of what the line costs. If a device
+       font pushes it back to three it simply gets taller; nothing breaks. */
+    .premise{font-size:12px;line-height:1.38;margin:0 0 6px}
+    #declare{padding:7px 14px}
+    /* the two calls no longer take turns with a single button, so on a phone
+       they are a row of their own and pay for it in padding */
+    .btn-call{padding:8px 11px;font-size:15px}
+    /* A REAL THUMB TARGET WITHOUT A TALLER LINE. Both of these live inside a
+       line of running text, so the box is grown to 44 and the same amount is
+       taken back in margin: the target is 44px, the line is not. Same trick as
+       .qmark up in the frame line. */
+    #nbBtn{padding:11px 8px;margin:-5px 0}
+    .nbtap{padding:13px 0;margin:-13px 0}
+    .say{padding:8px 10px;font-size:14px;margin-bottom:0}
+    #hint{font-size:12px;margin-top:4px}
+    /* The 375x667 budget has no room for eighty sentences in the stack, so on a
+       phone the notebook is a sheet you open from the count. ONLY WHILE IT IS
+       IN THE RAIL: the exam's one line and the reveal's page stay on screen.
+       This said `.wrap #notebook` until the exam moved into .wrap, at which
+       point it would have silently swallowed the exam's line as well. */
+    .rail #notebook{display:none}
+  }
 
   .tok{flex:0 0 auto;cursor:pointer;display:block;overflow:visible}
   .tok .liq{transform-box:fill-box;transform-origin:50% 100%}
@@ -257,7 +651,16 @@
     50%{transform:rotate(-3deg) scaleY(1.2)}}
   @keyframes garFlop{0%,100%{transform:none}22%{transform:rotate(16deg)}52%{transform:rotate(-9deg)}76%{transform:rotate(4deg)}}
   @keyframes fizz{0%{opacity:.55;transform:none}100%{opacity:0;transform:translateY(-11px) scale(1.7)}}
-  @media (prefers-reduced-motion: reduce){ .tok,.tok *,.sm{animation:none !important} }
+  /* the strike and the count's flick are motion like any other — the strike
+     still lands, it just lands instantly */
+  @media (prefers-reduced-motion: reduce){
+    /* .a-shut is also guarded in JS — the class is never added under reduced
+       motion, so the state flips on the same tick rather than waiting out an
+       animation that was suppressed here. Listed anyway: if the class ever
+       arrives by another route the 260ms fallback still lands the state. */
+    .tok,.tok *,.sm,.a-flick,.a-shut,.a-won .headline,.a-won .reveal{animation:none !important}
+    .nbtext{transition:none !important}
+  }
 </style>
 </head>
 <body>
@@ -265,19 +668,35 @@
 <div class="bar">
   <div>
     <h1>Speakeasy</h1>
-    <p class="sub" id="dayline"></p>
   </div>
+  <!-- THREE CONTROLS, AND ALL THREE ARE SETTINGS. The ? left because it is not
+       a setting — it is the rules, and it now sits beside the sentence that
+       makes a reader want them. About left because a footer is where you look
+       for a colophon. -->
   <div class="row">
-    <!-- Always here, warm-ups included. A new player has to work out the SHAPE
-         of the answer as well as the answer; this is the only place that says
-         what she can possibly care about, so hiding it until they had already
-         played was backwards. -->
-    <button class="btn-quiet icon" id="helpBtn" aria-label="How to play" title="How to play">?</button>
+    <!-- Notebook off IS pro mode. One name, one flag, one code path — a second
+         name for the same switch is how two of them end up disagreeing. -->
+    <button class="btn-quiet" id="nbBtn" aria-pressed="true">notebook</button>
     <button class="btn-quiet" id="skinBtn">skin</button>
     <button class="btn-quiet icon" id="themeBtn" aria-label="Switch theme"></button>
-    <a class="btn-quiet hidden" id="aboutLink" href="about.html">about</a>
   </div>
 </div>
+
+<!-- THE GAME, STATED, IN THIRTEEN WORDS. Nothing on this page said there WAS a
+     hidden rule — the word never appeared outside a dialog nobody opens — and
+     nothing said what the player was supposed to be DOING. "I know what she
+     likes" primes taste, which is the one thing she never cares about. This
+     names the task first and then bounds it, and it gives away no individual
+     rule because it is true of all of them. Deducing a rule, not guessing a
+     combination: "work out HER RULE" is load-bearing and the four nouns are the
+     bound, not a list of things to try.
+     Outside #playArea on purpose, so it is there on the warm-ups, through the
+     exam, and at the reveal. The ? is inside the sentence, where the question
+     forms — read the four nouns, wonder what they mean, and the answer is the
+     next thing your eye reaches. -->
+<p class="premise"><strong>Work out her rule</strong> — it's only ever colour, size,
+  order, or how many.<button class="qmark" id="helpBtn" aria-label="How to play"
+  title="How to play"><span>?</span></button></p>
 
 <div class="wrap" id="playArea">
   <main class="panel">
@@ -285,15 +704,35 @@
     <div class="tray empty" id="tray"></div>
     <div class="picker" id="picker"></div>
     <div class="row" style="margin-top:10px" id="controls"></div>
-    <p class="sub" id="hint" style="margin:9px 0 0"></p>
+    <!-- margin lives in the stylesheet, not here: an inline style outranks a
+         media query, so `#hint{margin-top:4px}` in the phone block lost to it
+         silently — the same defect as the block that lost to plain base rules -->
+    <p class="sub" id="hint"></p>
     <div class="legend" id="legend"></div>
     <div class="strip" id="strip" role="list" aria-label="Tonight's rounds, in the order you asked for them"></div>
   </main>
 
+  <!-- THE EXAM SITS IN THE PLAY COLUMN, not in a screen of its own. show("exam")
+       used to hide #playArea whole, which took the ledger away with it and made
+       a reasoning test into a memory test — and the ledger leaks nothing, it is
+       only rounds she has already judged in front of the player. The NOTEBOOK is
+       still taken back; that is a different promise and it is kept in
+       renderNotebook. -->
+  <div id="examArea" class="hidden">
+    <div class="panel">
+      <div class="say i"><strong>Last orders.</strong> No help from here. Will she take these?</div>
+      <div id="examBody"></div>
+    </div>
+  </div>
+
   <aside class="rail">
     <div class="panel ledger">
+      <!-- the night's name, moved off the masthead to pay for the line above.
+           It is NOT .sub, so the phone keeps it when it drops the rest — and it
+           is still where #nbCountSlot hangs the phone's tappable count. -->
+      <p class="lday" id="dayline"></p>
       <p class="sub" id="prompt" style="margin:0 0 9px"></p>
-      <p class="sub" id="standing" style="margin:0 0 8px;font-weight:600;color:var(--brass)"></p>
+      <p class="sub hidden" id="standing" style="margin:0 0 8px;font-weight:600;color:var(--brass)"></p>
       <div class="logs">
         <div class="logcol y">
           <h3 id="logYT"></h3>
@@ -306,20 +745,28 @@
           <div id="logN"></div>
         </div>
       </div>
-      <button class="btn-go" id="declare" style="width:100%;margin-top:10px">I know what she likes</button>
-      <p class="sub" style="margin:7px 0 0">She'll test you on four rounds you haven't seen.</p>
+      <!-- boxed so the exam can put it away: the ledger stays up during last
+           orders, and an offer to declare while you are declaring is a button
+           that throws. renderStanding decides whether it is filled or an edge. -->
+      <div id="declareBox">
+        <button class="btn-edge" id="declare" style="width:100%;margin-top:10px">I know what she likes</button>
+        <p class="sub" style="margin:7px 0 0">She'll test you on four rounds you haven't seen.</p>
+      </div>
     </div>
   </aside>
 </div>
 
-<div id="examArea" class="hidden">
-  <div class="panel">
-    <div class="say i"><strong>Last orders.</strong> No help from here. Will she take these?</div>
-    <div id="examBody"></div>
-  </div>
-</div>
-
 <div id="doneArea" class="hidden"><div class="panel" id="doneBody"></div></div>
+
+<!-- ABOUT LIVES HERE NOW. It was the fifth control in the header, at the same
+     weight as the theme switch, and of the things that were up there it had the
+     least claim to the space: it is where the game came from, not something you
+     do to the game. A footer is where a reader already looks for that. It still
+     appears only once there is a night to be curious about — renderControls
+     owns that, and the question it answers has no referent before round one. -->
+<footer class="foot">
+  <a class="hidden" id="aboutLink" href="about.html">Why she keeps refusing perfectly good drinks</a>
+</footer>
 
 <!-- Know your bartender. A native <dialog> so ESC, the focus trap and the
      backdrop come for free rather than being re-implemented badly.
@@ -335,7 +782,7 @@
      The three examples are illustration, not content: each is chosen to be a
      shape the library can express but no shipped rule uses, and check-rules.mjs
      asserts none of them collides with a reveal sentence. -->
-<dialog id="help" aria-labelledby="helpTitle">
+<dialog id="help" class="sheet" aria-labelledby="helpTitle">
   <div class="helpbox">
     <div class="helphead">
       <h2 id="helpTitle">Know your bartender</h2>
@@ -374,6 +821,26 @@
   </div>
 </dialog>
 
+<!-- THE PRICE, BEFORE IT IS PAID. Declaring was one click away from three rounds
+     on the tab and nothing on screen said so — the button read "I know what she
+     likes", which is an invitation, not a wager. Same <dialog>, same .sheet
+     class as the help panel: one box, one backdrop, written once.
+     The numbers in it are the ENGINE'S — E.examCharge, read at open time from
+     where the player actually stands — because a penalty ladder typed into
+     prose here is a second copy of the scoring. -->
+<dialog id="ask" class="sheet" aria-labelledby="askTitle">
+  <div class="helpbox">
+    <div class="helphead">
+      <h2 id="askTitle">Last orders?</h2>
+    </div>
+    <p id="askPrice"></p>
+    <div class="row" style="margin-top:16px">
+      <button class="btn-go" id="askYes">Go on then</button>
+      <button class="btn-quiet" id="askNo">Not yet</button>
+    </div>
+  </div>
+</dialog>
+
 <script src="skins.js"></script>
 <script src="rules.js"></script>
 <script src="hypotheses.js"></script>
@@ -390,7 +857,18 @@ const save = d => { try { localStorage.setItem(STORE, JSON.stringify(d)); } catc
 let db = load();
 db.sessions = db.sessions || {};     // keyed by puzzle id — resumable
 db.times    = db.times || [];        // every completed session's duration and probe count
-db.skin     = db.skin || "cocktails";
+/* CELLAR, not cocktails. Its names cost the player nothing: Red/Gold/Pale are
+   colour words where Grenadine/Curaçao/Midori are liqueurs you either know or
+   spend a probe wondering about, and Shot/Goblet/Mug are vessels where
+   "Highball" names a SERVE — so "a red Highball" is a category error and a
+   reader who knows drinks stalls on it. That tax used to be paid once a round;
+   with the notebook on screen it is paid across a dozen sentences a round. */
+db.skin     = db.skin || "cellar";
+/* ?? AND NOT ||. The line above teaches the wrong pattern: `db.notebook || true`
+   is permanently true, so pro mode could be switched on and would silently
+   switch itself back off on the next load. Only `??` lets a stored `false`
+   survive. There is a test that reads this line's source for exactly this. */
+db.notebook = db.notebook ?? true;
 
 /* ---------- which puzzle ---------- */
 /* The engine decides what counts as a warm-up and what order they ramp in — it
@@ -509,7 +987,7 @@ function tok(d, scale, calm) {
 
 function renderMini(el, round, sc = SCALE.mini) {
   el.innerHTML = "";
-  if (!round.length) { el.innerHTML = `<span style="color:var(--faint);font-size:12px">nothing at all</span>`; return; }
+  if (!round.length) { el.innerHTML = `<span style="color:var(--dim);font-size:12px">nothing at all</span>`; return; }
   round.forEach(d => el.appendChild(tok(d, sc, true)));
 }
 
@@ -518,11 +996,21 @@ function renderHead() {
   const starter = E.isStarter(rule);
   /* Par sits here rather than in the hint line so it is on screen before the
      first round, and stays there. The engine is the only thing that knows what
-     par is — starters come back null and the line simply has no par in it. */
-  const par = E.score(session, rule).par;
-  $("dayline").textContent = starter
+     par is — starters come back null and the line simply has no par in it.
+     PRO ONLY, now. Measured: random play with the notebook open finishes in a
+     mean of 5.61 rounds against a par of 6, so in standard mode par is a line
+     the player clears without thinking about it and it tells them nothing. It
+     stays in the engine and in rules.js; it just stops being printed at someone
+     who is not being measured against it. */
+  const par = pro() ? E.score(session, rule).par : null;
+  const head = starter
     ? `Warming up — ${STARTERS.indexOf(rule)+1} of ${STARTERS.length}`
     : `${todayISO} · house rule #${rule.n}${par === null ? "" : ` · par ${par}`}`;
+  /* The count's home on a phone — see renderStanding. #dayline is the only line
+     in the bar the phone layout does not suppress, and re-homing into it costs
+     no block and no new height, where a fourth header button wraps the row. */
+  $("dayline").textContent = head;
+  $("dayline").appendChild(Object.assign(document.createElement("span"), { id: "nbCountSlot" }));
   /* the column headings already say what she did with each one — this line only
      has to say what the list IS. Instructions live under the picker instead. */
   $("prompt").textContent = "Everything she's judged tonight. The first two were on the house.";
@@ -571,6 +1059,16 @@ function renderPicker() {
     const t = tok({ c, s }, SCALE.pick, true);
     t.style.pointerEvents = "none";
     cell.appendChild(t);
+    /* THE NAMES, ON THE BAR ITSELF. The legend is correctly hidden below 900px,
+       and that left a phone player reading "it contains at least one Coupe" in
+       the notebook with nothing on screen saying which of these is a Coupe.
+       Same words the legend uses and the same words the tooltip uses, from the
+       same skin — no second vocabulary. Hidden above 900px, where the legend
+       says it once instead of nine times. */
+    const nm = document.createElement("span");
+    nm.className = "pname";
+    nm.textContent = `${sz} ${col.name}`;
+    cell.appendChild(nm);
     cell.onclick = () => {
       if (busy || tray.length >= E.MAX_DRINKS) return;
       tray.push({ c, s });
@@ -616,10 +1114,16 @@ function renderControls() {
        about par, so choosing the round was never the hard part — holding the
        theories is. "She isn't watching colour" kills every colour theory the
        player is carrying, which is the thing they cannot do for themselves. */
-    const cls = E.classHint(session, rule, HYPOTHESES);
+    /* PRO ONLY. It costs a round to be told "she isn't watching colour", and
+       with the notebook open that is already on the glass — measured, daily 12
+       shows the whole colour family struck before a single probe, and this
+       panel renders a dead family as "colour — all crossed out". Charging a
+       player for what they can already read is dishonest, so in standard mode
+       he still offers his round; only the class hint is withheld. */
+    const cls = pro() ? E.classHint(session, rule, HYPOTHESES) : null;
     if (cls) {
       session = E.takeHint(session, Date.now());
-      persist(); renderControls(); renderStanding();
+      persist(); renderControls(); renderNotebook(); renderStanding();
       $("hint").textContent = {
         colour: "The regular leans over: “Don't bother with colour. Not tonight.”",
         size:   "The regular leans over: “It's not size. She'd take any of them.”",
@@ -632,7 +1136,7 @@ function renderControls() {
     session = E.takeHint(session, Date.now());
     tray = r.map(d => ({ ...d }));
     poured = tray.length - 1;
-    persist(); renderTray(); renderControls(); renderStanding();
+    persist(); renderTray(); renderControls(); renderNotebook(); renderStanding();
     $("hint").textContent = r.length
       ? "“Try this one.” Ordering it is still on you — so is calling it."
       : "“Ask her for nothing,” he says. “Go on. See what she does.”";
@@ -665,45 +1169,50 @@ function renderControls() {
     over.onclick = () => {
       if (busy) return;
       session = E.newSession(rule, Date.now());
-      tray = []; said = null; stripSeen = 0;
+      tray = []; said = null; stripSeen = 0; nbReset();
       persist(); renderAll();
     };
     overBtn = over;
   }
 
-  if (!E.callRequired(session)) {
-    const go = document.createElement("button");
-    go.className = "btn-go"; go.textContent = "Order it";
-    go.onclick = () => serve(null);
-    el.append(go, ask, clear);
-    if (overBtn) el.appendChild(overBtn);
-    if (giveUpBtn) el.appendChild(giveUpBtn);
-    /* Say nothing about calling yet — the player has not met it. Teach it at
-       the moment it starts, and let the two buttons do the explaining. */
-    $("hint").textContent = session.probes.length === 0
-      ? "Order whatever you fancy — she'll let you know."
-      : "One more on the house.";
-  } else {
-    const y = document.createElement("button");
-    y.className = "btn-yes"; y.textContent = "She'll take it";
-    y.onclick = () => serve(true);
-    const n = document.createElement("button");
-    n.className = "btn-no"; n.textContent = "She'll send it back";
-    n.onclick = () => serve(false);
-    el.append(y, n, ask, clear);
-    if (overBtn) el.appendChild(overBtn);
-    if (giveUpBtn) el.appendChild(giveUpBtn);
-    $("hint").textContent = nudge();
-  }
+  /* THE ROW NEVER SWAPS. Both calls are on screen from the very first round and
+     nothing about them moves when the scoring starts; only the caption changes.
+     The old shape put a brass `Order it` up for two rounds and then DELETED it,
+     replacing it with two quiet outlines — so the game lost its primary button
+     precisely where it got harder, and the only filled one left on screen was
+     the one that ends the night.
+     E.probe drops a call it did not require (`call: needsCall ? call : null`),
+     so the page passes one every round and the engine decides what it is worth.
+     No engine change, and free rounds still record call:null in the share card. */
+  /* btn-yes / btn-no are kept alongside btn-call: they are what this button IS,
+     the exam's quiet pair still wears them alone, and tools/layout-check.mjs
+     reaches for .btn-yes to drive a round. .btn-call is declared after both, so
+     it wins every property they set and the pair renders as one brass row. */
+  const y = document.createElement("button");
+  y.className = "btn-call btn-yes"; y.textContent = "She'll take it";
+  y.onclick = () => serve(true);
+  const n = document.createElement("button");
+  n.className = "btn-call btn-no"; n.textContent = "She'll send it back";
+  n.onclick = () => serve(false);
+  el.append(y, n, ask, clear);
+  if (overBtn) el.appendChild(overBtn);
+  if (giveUpBtn) el.appendChild(giveUpBtn);
+  /* the free rounds are TAUGHT, not hidden: say what they are and how many are
+     left, so the call is practised twice before it counts for anything */
+  $("hint").textContent = E.callRequired(session) ? nudge()
+    : `On the house — say what you think, it isn't counted yet. (${E.FREE_PROBES - session.probes.length} left)`;
 }
 
 /* live and truthful — never an invented statistic */
 function nudge() {
   const bets = session.probes.filter(p => p.call !== null);
   const s = E.score(session, rule);
-  /* the first time the call is required, explain it once and only once */
+  /* The moment it starts counting. Nothing on screen has moved, so this line is
+     the only thing that marks the change — and it says the change AND the point
+     of the game in one breath, because a player who orders only what they are
+     sure of will call everything right and learn nothing. */
   if (!bets.length)
-    return "Now call it first — what's she going to do with this one?";
+    return "Now it counts. A round you're already sure about teaches you nothing.";
   if (bets.length >= 3 && bets.every(p => p.call === true))
     return "You've only ever expected a yes. Try to be wrong on purpose — it's quicker.";
   if (session.probes.length >= 4 && !session.probes.some(p => !p.accepted))
@@ -712,7 +1221,8 @@ function nudge() {
      method, never a scolding and never a cap on how long you may keep going. */
   if (s.par !== null && s.toPar > 6)
     return "Long night. Take one she liked and change a single thing about it.";
-  return s.par === null ? "" : `Par's ${s.par}. You're on ${s.effective}.`;
+  /* par is a pro number now — see renderHead */
+  return s.par === null || !pro() ? "" : `Par's ${s.par}. You're on ${s.effective}.`;
 }
 
 function serve(call) {
@@ -727,7 +1237,8 @@ function serve(call) {
   busy = glasses.length > 0;
   const settle = () => {
     tray = []; busy = false;
-    persist(); renderTray(); renderControls(); renderLog(); renderStrip(); renderStanding();
+    persist(); renderTray(); renderControls(); renderLog(); renderStrip();
+    renderNotebook(); renderStanding();
   };
   glasses.length ? setTimeout(settle, accepted ? 880 : 780) : settle();
 }
@@ -751,9 +1262,11 @@ function renderLog() {
     const row = document.createElement("div");
     row.className = "entry";
     const m = document.createElement("div");
-    if (p.call === null) { m.className = "mk free"; m.textContent = "–"; m.title = "free round"; }
-    else if (p.call === p.accepted) { m.className = "mk hit"; m.textContent = "✓"; m.title = "you called it"; }
-    else { m.className = "mk miss"; m.textContent = "✗"; m.title = "she surprised you"; }
+    /* the same three names and the same three labels the strip and the share
+       card use — MARK_LABEL is the one place any of them is written */
+    if (p.call === null) { m.className = "mk free"; m.textContent = "–"; m.title = MARK_LABEL.free; }
+    else if (p.call === p.accepted) { m.className = "mk called"; m.textContent = "✓"; m.title = MARK_LABEL.called; }
+    else { m.className = "mk surprised"; m.textContent = "!"; m.title = MARK_LABEL.surprised; }
     const mini = document.createElement("div");
     mini.className = "mini";
     renderMini(mini, p.round, SCALE.log);
@@ -797,12 +1310,343 @@ function renderStrip() {
   stripSeen = marks.length;
 }
 
+/* ---------- the notebook ----------
+ *
+ * Every derivation here is the engine's. The page groups, orders and strikes
+ * what E.notebookState hands it and holds no rule of its own.
+ */
+
+/* The two modes, named once, in her register rather than a manual's. The honest
+   distinction is not easy-and-hard: with the page open you are crossing off a
+   list somebody else already wrote, and with it shut you have to think the
+   theories up yourself, which is the whole of the actual task. It is the
+   toggle's own tooltip as well as the panel's subtitle, so a player in pro mode
+   — who has no panel to read it in — can still find out what they turned off. */
+const NB_WHY = "With the notebook, you're crossing off someone else's list. Shut it and you write your own.";
+
+const nbOn = () => db.notebook !== false;
+/* Notebook off IS pro mode. One flag, one name, one code path. */
+const pro  = () => !nbOn();
+
+/* The panel is BUILT or REMOVED, never hidden. A display:none notebook is a
+   second state that can drift out of step with the flag; an absent one cannot. */
+function nbPanel() {
+  let el = $("notebook");
+  if (!nbOn()) { if (el) el.remove(); return null; }
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "notebook";
+    el.className = "panel";
+    el.innerHTML = `<div class="nbhead"><span class="nbtitle">Her rule is on this page</span>
+        <span class="nbcount" id="nbStanding"></span></div>
+      <p class="nbwhy"></p><div class="nbbody" id="nbBody"></div>
+      <div class="nbfoot"><button class="btn-quiet nbshut" id="nbShut">Close notebook</button></div>`;
+    el.querySelector(".nbwhy").textContent = NB_WHY;
+    /* THE WAY OUT LIVES IN THE THING IT CLOSES, and it travels with the panel —
+       the rail above 900px, the sheet below it. Pro mode IS the notebook being
+       closed, and a control that changes a persistent mode says what it does:
+       "Close notebook", not a one-time-sounding dismissal. The way back in is
+       the header button, which sits there reading `notebook` the whole time.
+       One flag, one code path: set it, and let renderAll's syncBook tell the
+       engine through E.closeNotebook. Nothing here writes session state. */
+    el.querySelector("#nbShut").onclick = () => {
+      let done = false;
+      const shut = () => {
+        if (done) return;           // animationend and the fallback both fire
+        done = true;
+        db.notebook = false;
+        const d = $("nbSheet"); if (d && d.open) d.close();
+        save(db); nbReset(); renderAll();
+      };
+      /* THE BOOK SHUTS, BUT NOTHING WAITS ON IT. Transform and opacity only —
+         both composite, so the rail never reflows mid-frame; animating height
+         here would relayout the whole column every frame as the ledger grows
+         to fill. 180ms, because a player pressing "Close notebook" wants it
+         gone and an animation is a delay dressed as a flourish. Under
+         prefers-reduced-motion it does not run at all and the state flips on
+         the same tick. */
+      const rail = el.closest(".rail");
+      if (!rail || matchMedia("(prefers-reduced-motion: reduce)").matches) return shut();
+      el.classList.add("a-shut");
+      el.addEventListener("animationend", shut, { once: true });
+      setTimeout(shut, 260);        // never strand the state on a dropped event
+    };
+  }
+  return el;
+}
+
+/* ONE NODE, MOVED — never a second copy rendered from the same state. #playArea,
+   #examArea and #doneArea are three different containers, so a panel parked in
+   the first is simply not on screen for the other two; on a phone that would
+   mean the player never sees the page at the reveal, which is the one moment it
+   has something to say. */
+function nbHome() {
+  return session.phase === "exam" ? $("examArea")
+       : session.phase === "done" ? $("doneArea")
+       : document.querySelector(".rail");
+}
+/* `force` is what the sheet's own close handler passes. Without it the guard
+   below — which stops a re-render yanking the panel out from under a player who
+   has it open — also stops it ever coming back, and the panel spends the rest
+   of the night inside a closed dialog. */
+function nbPlace(el, force) {
+  if (!force && el.closest("#nbSheet")) return;    // the phone has it open
+  const home = nbHome();
+  if (home && el.parentNode !== home) home.appendChild(el);
+}
+
+/* THE KILL HAPPENS IN PLACE, and the re-sort waits for the next pour. Both are
+   needed: a line that jumps at the same instant it is struck is a line the
+   player did not see die. So a render draws the order the LAST render settled
+   on, strikes whatever has died since, and only then works out the order for
+   next time. */
+let nbOrder = new Map();     // family key -> ids, in the order last drawn
+let nbDead  = new Set();     // ids already dead at the last render
+let nbSeen  = null;          // last standing count, for the flick
+/* "Died since the last render" needs a last render to exist. Without this the
+   FIRST paint calls every corpse a fresh kill — and the opening page is already
+   ~84% struck by her two openers, so nothing would collapse and the player
+   would meet a wall of strikethrough that also claimed they had just caused it.
+   True on a resumed session too, which starts from an empty nbDead. */
+let nbPrimed = false;
+function nbReset() { nbOrder = new Map(); nbDead = new Set(); nbSeen = null; nbPrimed = false; }
+
+/* THE LIST THE PLAYER IS ACTUALLY WORKING FROM.
+ *
+ * Evidence items 0 and 1 are her two free openers, and they land before the
+ * player has done anything — measured, they kill about 84% of the library on
+ * sight (80 rows down to 13 on daily 4, 37 down to 6 on warm-up 1). Those
+ * theories were never the player's to lose. Printing them, even collapsed,
+ * anchors the count on a quantity that is not on screen and never will be,
+ * which is the exact defect the old floating "7 theories still fit" had, and it
+ * makes the panel's first impression a page that is mostly crossed out.
+ *
+ * So they are ABSENT — not collapsed, not struck, not counted. What is left is
+ * every theory that was standing when the player sat down: the live ones, and
+ * the ones their OWN rounds killed. `crossed out (N)` then starts at zero and
+ * grows, which makes it a record of their work rather than of hers.
+ *
+ * The promise survives untouched: E.notebookTruth's class is alive on the seeds
+ * by construction, so it can never be one of the rows dropped here.
+ *
+ * The length of this list is also the OPENING COUNT — a theory alive after the
+ * seeds is either still alive or died on a player's round — so the denominator
+ * is fixed for a rule and bar and cannot move under the player.
+ *
+ * Nothing in the engine changes for any of this: notebookState still returns
+ * every class with its diedOn, and this is only what the page chooses to draw. */
+const nbPage = st => st.entries.filter(e => e.diedOn === null || e.diedOn >= 2);
+
+/* "13 of 13" is noise, so the fraction appears only once it has actually moved */
+const nbStand = (n, of) =>
+  `${n === of ? n : `${n} of ${of}`} still ${n === 1 ? "stands" : "stand"}`;
+
+const flick = el => {
+  if (!el) return;
+  el.classList.remove("a-flick"); void el.offsetWidth; el.classList.add("a-flick");
+};
+
+function nbRow(e, C, S, N, truth, just) {
+  const p = document.createElement("p");
+  p.className = "nbrow" + (e.alive ? "" : " dead") + (e.id === truth ? " truth" : "");
+  const t = document.createElement("span");
+  t.className = "nbtext";
+  t.textContent = e.text(C, S, N);
+  p.appendChild(t);
+  if (!e.alive) {
+    const d = document.createElement("span");
+    d.className = "nbdied";
+    /* evidence 0 and 1 are her two openers; item 2 is the player's round 1 */
+    d.textContent = e.diedOn < 2 ? "died on her opener" : `died on round ${e.diedOn - 1}`;
+    p.appendChild(d);
+  }
+  /* struck on the next frame so the transition has somewhere to come from */
+  if (just) { p.classList.remove("dead"); requestAnimationFrame(() => p.classList.add("dead")); }
+  return p;
+}
+
+function renderNotebook() {
+  const el = nbPanel();
+  if (!el) { nbReset(); return; }
+  nbPlace(el);
+  const body = el.querySelector("#nbBody"), count = el.querySelector("#nbStanding");
+
+  /* She takes it back for the exam. Said once, in her voice, where the page was. */
+  if (session.phase === "exam") {
+    count.textContent = "";
+    body.innerHTML = "";
+    body.appendChild(nbRow(
+      { id: -1, alive: true, text: () => "She's holding your notebook until you've answered." },
+      null, null, null, null, false));
+    return;
+  }
+
+  const st = E.notebookState(session, rule, HYPOTHESES);
+  const C = skin().cols.map(c => c.name), S = skin().sizes, N = skin().item;
+  /* read once, at the reveal, and never during play */
+  const truth = session.phase === "done" ? E.notebookTruth(rule, HYPOTHESES) : null;
+  const page = nbPage(st);
+  const byId = new Map(page.map(e => [e.id, e]));
+  const next = new Map();
+
+  count.textContent = nbStand(st.standing, page.length);
+  body.innerHTML = "";
+
+  /* the engine pins the display order; the page never invents one. Families are
+     derived PER SPACE, so a one-colour bar simply has no colour family. */
+  E.NOTEBOOK_FAMILIES.forEach(f => {
+    const mine = page.filter(e => e.family === f.key);
+    if (!mine.length) return;
+    const settledOrder = mine.filter(e => e.alive).map(e => e.id)
+                             .concat(mine.filter(e => !e.alive).map(e => e.id));
+    const prev = nbOrder.get(f.key);
+    const order = prev
+      ? prev.filter(id => byId.has(id)).concat(settledOrder.filter(id => !prev.includes(id)))
+      : settledOrder;
+    const rows = order.map(id => byId.get(id));
+    const just = new Set(nbPrimed
+      ? rows.filter(e => !e.alive && !nbDead.has(e.id)).map(e => e.id) : []);
+    const alive = mine.filter(e => e.alive).length;
+
+    const wrap = document.createElement("div");
+    wrap.className = "nbfam";
+
+    if (alive === 0 && just.size === 0) {
+      /* the regular's class hint, shown instead of sold: a family with nothing
+         left alive IS "she isn't watching colour tonight" */
+      const d = document.createElement("details");
+      d.className = "nbmore";
+      d.appendChild(Object.assign(document.createElement("summary"),
+        { textContent: `${f.label} — all crossed out` }));
+      rows.forEach(e => d.appendChild(nbRow(e, C, S, N, truth, false)));
+      wrap.appendChild(d);
+    } else {
+      const lab = document.createElement("div");
+      lab.className = "nblab";
+      /* A BARE COUNT, not a fraction. The headline carries "10 of 17 still
+         stand" and that one fraction is the progress signal; repeating the
+         construction once per family says nothing new six more times and is
+         what made the page read as arithmetic. The dead count is already on
+         the "crossed out (N)" line right below.
+         A family whose last theory died THIS round keeps its rows on screen —
+         the strike is the payoff — but says so in the header, which is the
+         regular's class hint shown instead of sold. */
+      lab.textContent = alive === 0
+        ? `${f.label} — all crossed out`
+        : `${f.label} · ${alive}`;
+      wrap.appendChild(lab);
+      /* only theories that were ALREADY dead may be tidied away — this round's
+         kills stay on screen wherever they were standing */
+      const hide = rows.filter(e => !e.alive && !just.has(e.id));
+      /* MORE THAN ONE, from the first paint. A struck sentence is a record of
+         why a theory died, which is worth keeping and is not worth being the
+         default view — at three-and-under the opening page is still a wall of
+         strikethrough. This round's kills are excluded above, so a line that
+         dies is always visible dying before it is tidied away. */
+      const tidy = hide.length > 1;
+      rows.forEach(e => {
+        if (tidy && !e.alive && !just.has(e.id)) return;
+        wrap.appendChild(nbRow(e, C, S, N, truth, just.has(e.id)));
+      });
+      if (tidy) {
+        const d = document.createElement("details");
+        d.className = "nbmore";
+        d.appendChild(Object.assign(document.createElement("summary"),
+          { textContent: `crossed out (${hide.length})` }));
+        hide.forEach(e => d.appendChild(nbRow(e, C, S, N, truth, false)));
+        wrap.appendChild(d);
+      }
+    }
+    body.appendChild(wrap);
+    next.set(f.key, settledOrder);
+  });
+
+  nbOrder = next;
+  nbDead = new Set(page.filter(e => !e.alive).map(e => e.id));
+  nbPrimed = true;
+}
+
+/* THE PHONE'S NOTEBOOK. The same element the rail holds — moved in, moved back
+   out — so the document never contains two notebooks that could disagree.
+   <dialog> shares no behaviour between instances, so the four lines the help
+   dialog needed are written again here: showModal, the close button, the
+   backdrop click, and returning focus on close. */
+function nbSheet() {
+  let d = $("nbSheet");
+  if (d) return d;
+  d = document.createElement("dialog");
+  d.id = "nbSheet"; d.className = "sheet";
+  d.setAttribute("aria-labelledby", "nbSheetTitle");
+  d.innerHTML = `<div class="helpbox">
+      <div class="helphead">
+        <h2 id="nbSheetTitle">Her rule is on this page</h2>
+        <button class="btn-quiet icon" id="nbX" aria-label="Close">✕</button>
+      </div>
+      <div id="nbSheetBody"></div>
+    </div>`;
+  document.body.appendChild(d);
+  d.querySelector("#nbX").onclick = () => d.close();
+  d.addEventListener("click", e => { if (e.target === d) d.close(); });
+  d.addEventListener("close", () => {
+    const el = $("notebook");
+    if (el) nbPlace(el, true);
+    const c = $("nbCount"); if (c) c.focus();
+  });
+  return d;
+}
+
+function openSheet() {
+  const el = $("notebook");
+  if (!el) return;
+  const d = nbSheet();
+  d.querySelector("#nbSheetBody").appendChild(el);
+  d.showModal();
+}
+
+/* The page records what the player did with the page; the engine decides what
+   it means for the card. Once opened, always opened — E.closeNotebook keeps a
+   true, because a player who has read the list cannot unread it. */
+function syncBook() {
+  const before = session.openedBook;
+  session = nbOn() ? E.openNotebook(session, Date.now()) : E.closeNotebook(session, Date.now());
+  if (session.openedBook !== before) persist();
+}
+
 /* ---------- exam ---------- */
+/* WHAT IT COSTS, IN HER WORDS, BEFORE IT IS SPENT. Every number is the engine's
+   and is read from where this player actually stands, so a second failed exam
+   is quoted its own price rather than a first-timer's. */
+function askExam() {
+  if (busy) return;
+  /* examCharge(k) is what the k-TH failure costs, so a player who has failed f
+     times is being quoted f+1. Off by one here would misquote the wager in the
+     one sentence whose whole job is to quote it honestly. */
+  const f = session.failedExams;
+  $("askPrice").textContent =
+    `Four rounds you haven't seen. Call all four right and the night's yours. `
+    /* ONE NUMBER, THE ONE THAT APPLIES NOW. Listing the escalation — "6 next
+       time, 9 after that" — spends the reader's attention at the exact moment
+       they are deciding whether to commit, on a schedule that only ever
+       concerns someone about to fail repeatedly. They are not that person yet.
+       Quoting examCharge(f + 1) means the sentence rises on its own for the
+       player who keeps coming back, which is who the rising charge is for. */
+    + `Miss one and it's ${E.examCharge(f + 1)} rounds on your tab.`;
+  $("ask").showModal();
+}
+
 function startExam() {
   if (busy) return;
+  /* A MODAL DIALOG LIVES IN THE TOP LAYER, and show("exam") only sets
+     #playArea.hidden — which does not reach it. An open notebook would sail
+     straight into the exam it is supposed to be locked out of, so it is closed
+     explicitly, before the phase changes under it. */
+  const d = $("nbSheet"); if (d && d.open) d.close();
   /* the engine seeds its own exam — the page choosing it was the exploit */
   session = E.declare(session, rule, HYPOTHESES, null, Date.now());
-  persist(); show("exam"); renderExam();
+  /* renderStanding clears the phone's count. Without it the count stays in the
+     header — which show("exam") does not hide — still reading a live number and
+     still opening the page she has just taken off the player. */
+  persist(); show("exam"); renderExam(); renderNotebook(); renderStanding();
 }
 
 function renderExam() {
@@ -825,9 +1669,16 @@ function renderExam() {
       n.onclick = () => { q.answer = false; renderExam(); };
       r.append(y, n);
     } else {
-      const t = document.createElement("div");
-      t.className = "sub"; t.style.margin = "0";
+      /* AN ANSWER IS NOT A COMMITMENT. This was a <div> of static text, so a
+         misclick on the first of four cost three rounds with no way back — and
+         the player had already been told the exam is where it gets expensive.
+         Nothing is graded until "That's my answer", so an answered item just
+         reopens its two buttons. The engine sees the exam once, at finish(). */
+      const t = document.createElement("button");
+      t.className = "btn-quiet said";
       t.textContent = q.answer ? "You said she takes it" : "You said she sends it back";
+      t.title = "Change it — nothing's graded until you give her the lot.";
+      t.onclick = () => { q.answer = null; renderExam(); };
       r.append(t);
     }
     w.appendChild(r);
@@ -870,20 +1721,22 @@ function renderDone() {
   const s = E.score(session, rule);
   const marks = E.shareMarks(session);
   const row = marks.map(m => GLYPHS[m]).join("");
+  /* Wall clock from first pour to last, so it is right for a night played in
+     one sitting and overstates one played with the tab left open. Shown only
+     when it is PLAUSIBLE for the number of rounds — past about four minutes a
+     round it is measuring the tab, not the player, and the card is the one
+     artefact that travels to other people. */
   const mins = Math.max(1, Math.round((session.lastActiveAt - session.startedAt) / 60000));
-  const text = E.shareText(session, rule, GLYPHS, "Speakeasy", mins);
+  const shown = mins <= Math.max(8, s.probes * 4) ? mins : null;
+  const text = E.shareText(session, rule, GLYPHS, "Speakeasy", shown);
   const riv = E.nameRival(session, rule, HYPOTHESES);
   const quit = !!session.gaveUp;
 
-  const avg = db.times.length > 1
-    ? Math.round(db.times.slice(0, -1).reduce((a, t) => a + t.probes, 0) / (db.times.length - 1)) : null;
-  const vsSelf = avg === null ? "" :
-    `<p class="sub" style="margin:0">${s.probes < avg ? `${avg - s.probes} rounds under your own average.`
-      : s.probes > avg ? `${s.probes - avg} over your own average.` : "Exactly your average."}</p>`;
-
   const rivalLine = riv
-    ? `<p class="sub" style="margin:0 0 6px">You were drinking on a theory: <em>${riv.rival.text(skin().cols.map(c => c.name), skin().sizes)}</em>. One round would have told you: <span id="sep"></span></p>`
-    : `<p class="sub" style="margin:0 0 6px">Nothing else in the bar fitted your evidence. You had her pinned.</p>`;
+    /* three arguments. The item noun is the third, and without it this line
+       still said "drink" while the player was looking at a bar of squares. */
+    ? `<p class="sub" style="margin:0 0 6px">You were drinking on a theory: <em>${riv.rival.text(skin().cols.map(c => c.name), skin().sizes, skin().item)}</em>. One round would have told you: <span id="sep"></span></p>`
+    : `<p class="sub" style="margin:0 0 6px">Nothing else fitted what you'd seen — you had her pinned.</p>`;
 
   /* the count already sits inside s.effective — say so rather than hide it */
   const asked = s.hints
@@ -891,16 +1744,18 @@ function renderDone() {
     : "";
 
   const surprises = s.surprises.length
-    ? `She caught you out on round ${s.surprises.join(" and ")} — that's where you actually learned something.`
+    ? `She caught you out on round ${s.surprises.join(" and ")}. That's where you actually learned something.`
     : `She never once surprised you, which usually means you only ordered what you were already sure of.`;
 
   /* Golf: the line, then how far over or under it. The number is the engine's
      (s.toPar, positive for over); this only puts words round it. Par is a
      lower bound measured against a solver that holds every theory at once, so
-     over par is the normal night and is never phrased as a failure. */
-  const vsPar = s.par === null ? ""
+     over par is the normal night and is never phrased as a failure.
+     PRO ONLY on both lines below — see renderHead for the measurement. */
+  const vsPar = s.par === null || !pro() ? ""
     : ` against a par of ${s.par} — ${s.toPar === 0 ? "level par"
         : s.toPar > 0 ? `${s.toPar} over` : `${-s.toPar} under`}`;
+  const parTail = s.par === null || !pro() ? "" : ` · par ${s.par}`;
 
   /* A night given up is a FINISHED night, not a failed one. It is stated
      plainly, it is never scolded, and it does not pretend to a par the player
@@ -908,15 +1763,19 @@ function renderDone() {
   const fails = session.failedExams
     ? ` ${GLYPHS.failed.repeat(session.failedExams)}` : "";
   const line = quit
-    ? `Gave up · about ${mins} min`
-    : `${s.effective} rounds${s.par === null ? "" : ` · par ${s.par}`}` +
+    ? `Gave up${shown ? ` · about ${shown} min` : ""}`
+    : `${s.effective} rounds${parTail}` +
       (session.lastExam ? ` · last orders ${session.lastExam.right}/${session.lastExam.of}` : "");
 
   show("done");
+  /* not on a give-up: that night is finished, not failed, and it is never
+     scolded — but it is not celebrated either. */
+  $("doneBody").classList.toggle("a-won", !quit);
   $("doneBody").innerHTML = `
-    <div class="headline">${quit ? "She pours you one anyway." : "She knows you know."}</div>
-    <p class="sub" style="margin:0">${quit ? `You called it a night · about ${mins} min`
-        : `${s.effective} rounds${vsPar} · about ${mins} min`}</p>
+    <div class="headline">${quit ? "She pours you one anyway." : "You had her."}</div>
+    <p class="reveal" style="margin:6px 0 2px">Her rule tonight: ${rule.text()}</p>
+    <p class="sub" style="margin:0 0 14px">${quit ? "You called it a night."
+        : `${s.effective} rounds${vsPar}`}${shown ? ` · about ${shown} min` : ""}</p>
     <div class="card">
       <div class="num">Speakeasy #${rule.n}</div>
       <div class="glyphs">${row}${fails}</div>
@@ -925,28 +1784,41 @@ function renderDone() {
     </div>
     <button class="btn-go" id="copy" style="width:100%">Copy</button>
     <div style="margin-top:18px">
-      <p class="reveal">Tonight she was pouring by this: ${rule.text()}</p>
       ${rivalLine}
       ${asked}
       <p class="sub" style="margin:0 0 6px">${surprises}</p>
-      ${vsSelf}
     </div>
     <div class="row" style="margin-top:16px">
       <button class="btn-quiet" id="next">${E.isStarter(rule) ? "Next" : "Play another"}</button>
     </div>`;
+  /* THE REVEAL, and #doneArea is not #playArea — a notebook left parked in the
+     play column is off screen here, which on a phone would mean the page is
+     never seen at the one moment it can say something. Moved in, and the true
+     sentence takes the help dialog's hanging brass tick and a faint brass wash.
+     Nothing else moves: the night stays exactly as the player left it. */
+  renderNotebook(); renderStanding();
   if (riv) renderMini($("sep"), riv.separator);
   $("copy").onclick = () => { navigator.clipboard?.writeText(text); $("copy").textContent = "Copied"; };
   $("next").onclick = () => {
     rule = currentRule();
     session = E.newSession(rule, Date.now());
-    tray = []; said = null;
+    /* a new rule is a new page — the drawn order and the dead set are keyed to
+       the last one's classes and must not carry over */
+    tray = []; said = null; nbReset();
     persist(); show("play"); renderAll();
   };
 }
 
 /* ---------- plumbing ---------- */
+/* THE LEDGER IS NOT PART OF THE BAR COLUMN. play and exam are both the play
+   screen: what changes is which of the two things in the left column is on —
+   the bar you order from, or the four rounds she is asking about. The rail, and
+   with it every round she has already judged, stays up for both. Only the
+   reveal replaces the whole screen. */
 function show(which) {
-  $("playArea").classList.toggle("hidden", which !== "play");
+  $("playArea").classList.toggle("hidden", which === "done");
+  document.querySelector(".wrap > main").classList.toggle("hidden", which !== "play");
+  $("declareBox").classList.toggle("hidden", which !== "play");
   $("examArea").classList.toggle("hidden", which !== "exam");
   $("doneArea").classList.toggle("hidden", which !== "done");
 }
@@ -964,16 +1836,107 @@ function renderTheme() {
    turn and discarded. "11 still fit" -> "3 still fit" is visible progress in a
    game that otherwise gives none, and it answers the question players get
    wrong most often: when to declare. It names no theory. */
+/* ONE COUNT ON THE GLASS, NOT TWO. This called E.standing(), which counts
+   LIBRARY ENTRIES; the notebook counts behaviour-classes. They are identical on
+   every daily and differ by one or two across the on-ramp — 7 against 6 on
+   warm-up 1, 15 against 13, 19 against 17 — because a small bar cannot tell some
+   sentences apart and E.standing() prints both. The notebook's is the number a
+   player can check by counting rows, so it is the number the game shows, in
+   BOTH modes: pro and standard must not be told different things about the same
+   night. E.standing() itself is untouched — the exam, rival naming and the
+   hints all consume it internally and want the library count. */
 function renderStanding() {
-  const n = E.standing(session, rule, HYPOTHESES);
-  $("standing").textContent = session.phase !== "play" ? ""
+  const st = E.notebookState(session, rule, HYPOTHESES);
+  const n = st.standing, playing = session.phase === "play";
+  /* ONE COUNT ON THE GLASS, AND ONE PHRASING OF IT. This line said "13 theories
+     still fit." eight centimetres above a pad saying "13 still stand" — the
+     same number twice, worded differently, which reads like two facts and
+     invites the player to look for the difference. The pad owns the count while
+     the pad exists, so in standard mode this line is not written at all.
+     PRO MODE HAS NO PAD, so there it is the only count there is and it stays. */
+  /* The exam button earns its fill. One theory left is the only state in which
+     the four unseen rounds are all determined, so it is the only state in which
+     this is the obvious next move; before it, it is an edge and the two brass
+     call buttons keep the primacy. No new derivation — n is already here. */
+  $("declare").className = n === 1 ? "btn-go" : "btn-edge";
+
+  const solo = playing && pro();
+  $("standing").classList.toggle("hidden", !solo);
+  $("standing").textContent = !solo ? ""
     : n === 1 ? "Only one theory still fits. Call it."
     : `${n} theories still fit.`;
+
+  const slot = $("nbCountSlot");
+  if (!slot) return;
+  slot.textContent = "";
+  if (!nbOn() || !playing) { nbSeen = null; return; }
+  slot.appendChild(document.createTextNode(" · "));
+  const b = document.createElement("button");
+  b.className = "nbtap"; b.id = "nbCount";
+  b.textContent = nbStand(n, nbPage(st).length);
+  b.title = "Open your notebook";
+  b.onclick = openSheet;
+  slot.appendChild(b);
+  /* the pulse: one subtle brass flick when the last verdict killed something,
+     and never on a resume, a skin swap or a theme swap */
+  const fell = nbSeen !== null && n < nbSeen;
+  nbSeen = n;
+  if (fell) { flick(b); flick($("nbStanding")); }
 }
 
-function renderAll() { renderTheme(); renderHead(); renderTray(); renderPicker(); renderControls(); renderLog(); renderStrip(); renderStanding(); renderSay(); }
+/* two channels, never colour alone: the pressed state is aria-pressed for a
+   screen reader, and brass plus a brass border for everyone else */
+function renderNbBtn() {
+  const b = $("nbBtn");
+  b.setAttribute("aria-pressed", String(nbOn()));
+  /* On a phone the button OPENS the page rather than toggling a panel that is
+     not on screen, so it says so. On the desktop it is a toggle and the tooltip
+     is the thing that explains what turning it off means. */
+  b.title = phone() ? "Open your notebook" : NB_WHY;
+}
 
-$("declare").onclick = startExam;
+function renderAll() {
+  syncBook();
+  renderTheme(); renderNbBtn(); renderHead(); renderTray(); renderPicker();
+  renderControls(); renderLog(); renderStrip(); renderNotebook(); renderStanding(); renderSay();
+}
+
+/* The one place the page asks which layout it is in. Same query the stylesheet
+   uses, so the two can never disagree about where the notebook lives. */
+const phone = () => matchMedia("(max-width:900px)").matches;
+
+$("declare").onclick = askExam;
+$("askNo").onclick  = () => $("ask").close();
+$("askYes").onclick = () => { $("ask").close(); startExam(); };
+$("ask").addEventListener("click", e => { if (e.target === $("ask")) $("ask").close(); });
+$("ask").addEventListener("close", () => { const d = $("declare"); if (d) d.focus(); });
+/* A BUTTON CALLED "NOTEBOOK" HAS TO SHOW YOU THE NOTEBOOK.
+   On a phone the panel is never in the play column — it is a sheet — so this
+   button toggling db.notebook did nothing a player could see except make a
+   number appear in the ledger line. Pressing "notebook" and getting no notebook
+   is the control lying about itself. So on a phone it OPENS THE SHEET, turning
+   the page back on first if the player had shut it; the count in the ledger
+   line stays a second route to the same sheet. Shutting it — pro mode — is a
+   deliberate act taken from inside the sheet, which reads as closing a book.
+   Above 900px the panel is permanently in the rail, so there the button really
+   is a toggle and is left exactly as it was.
+   The flag is still the only state: syncBook, inside renderAll, is what tells
+   the engine, through E.openNotebook / E.closeNotebook. */
+$("nbBtn").onclick = () => {
+  if (phone()) {
+    /* she is holding it until the four rounds are answered */
+    if (session.phase === "exam") return;
+    if (!nbOn()) { db.notebook = true; save(db); nbReset(); renderAll(); }
+    openSheet();
+    return;
+  }
+  db.notebook = pro();
+  const d = $("nbSheet"); if (d && d.open) d.close();
+  nbReset();
+  save(db); renderAll();
+  if (session.phase === "exam") renderExam();
+  if (session.phase === "done") renderDone();
+};
 $("skinBtn").onclick = () => {
   const keys = Object.keys(SKINS);
   db.skin = keys[(keys.indexOf(db.skin) + 1) % keys.length];
