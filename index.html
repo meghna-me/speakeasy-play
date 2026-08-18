@@ -1040,6 +1040,12 @@
   .usual:hover{border-color:var(--brass);background:color-mix(in srgb,var(--brass) 8%,var(--panel2))}
   /* the chosen one wears the same hanging brass the reveal does — it IS the
      reveal, for the person holding it */
+  /* THE BUTTON RESET. .usualbox is a <button> on the customer's card so it can
+     be held down, and a bare button brings its own font, centring and colour. */
+  button.usualbox{font:inherit;color:inherit;text-align:left;width:100%;cursor:pointer;
+    -webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+  .usualbox.hold{filter:blur(8px)}
+  @media (prefers-reduced-motion:no-preference){.usualbox{transition:filter .12s ease}}
   .usualbox{padding:11px 13px;border-radius:10px;margin:0;
     background:color-mix(in srgb,var(--brass) 10%,transparent);
     border-left:3px solid var(--brass)}
@@ -4088,8 +4094,10 @@ function renderCust() {
      takes the caret out of the box the player is typing in. */
   let link = usualLink(hyp.id);
   el.insertAdjacentHTML("beforeend",
-    `<p class="invrow" style="margin-top:16px">Your usual — they can't see this</p>
-     <p class="reveal usualbox">${custText(hyp)}</p>
+    `<p class="invrow" style="margin-top:16px">Your usual — hold to look</p>
+     <button type="button" class="reveal usualbox hold" id="myusual"
+       aria-label="Your usual, covered. Press and hold to see it: ${custText(hyp)}"
+       >${custText(hyp)}</button>
      <label class="invrow" for="custName2" style="margin-top:14px">Your name</label>
      <input id="custName2" type="text" autocomplete="off" maxlength="18"
        placeholder="so they know whose it is">`);
@@ -4145,6 +4153,28 @@ function renderCust() {
   }
   el.appendChild(row);
   el.insertAdjacentHTML("beforeend", `<p class="linkbox">${link}</p>`);
+  /* HOLD, NOT TAP. The reveal at the end of a night toggles, because the player
+     has finished and wants to read it. This is the opposite situation: the
+     person holding the phone already KNOWS their usual, and the screen is about
+     to be handed to — or photographed by — the one person who must not see it.
+     A toggle can be left switched on; a press that ends when the finger lifts
+     cannot. A real <button>, so it takes focus and answers a key, and losing
+     focus re-covers it. */
+  {
+    const u = el.querySelector("#myusual");
+    const cover = () => u.classList.add("hold");
+    const look  = () => u.classList.remove("hold");
+    u.addEventListener("pointerdown", look);
+    for (const ev of ["pointerup", "pointercancel", "pointerleave", "blur"])
+      u.addEventListener(ev, cover);
+    u.addEventListener("keydown", e => {
+      if (e.key === " " || e.key === "Enter") { e.preventDefault(); look(); } });
+    u.addEventListener("keyup", cover);
+    /* a long press on a phone otherwise selects the text or raises the callout
+       menu, and both of those show the words this is covering */
+    u.addEventListener("contextmenu", e => e.preventDefault());
+  }
+
   {
     const box = el.querySelector(".linkbox");
     const field = el.querySelector("#custName2");
