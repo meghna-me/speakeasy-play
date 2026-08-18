@@ -4218,6 +4218,20 @@ function renderCust() {
     t.setAttribute("aria-label", `Take away the ${DRINK(d.c, d.s)}`);
     counter.appendChild(t);
   });
+  /* THE SAME CLEAR THE BAR'S COUNTER HAS. Taking glasses off one at a time was
+     the only way to undo a mis-tap here, which is the exact complaint that put
+     Clear on the counter in the first game — and this counter is tapped by
+     somebody reading a round out loud from across a table, so a mis-tap is more
+     likely here, not less. */
+  if (custTray.length) {
+    const wipe = document.createElement("button");
+    wipe.type = "button";
+    wipe.className = "wipe";
+    wipe.textContent = "Clear";
+    wipe.setAttribute("aria-label", `Take all ${custTray.length} back off the counter`);
+    wipe.onclick = () => { custTray = []; custSaid = null; saveCust(); renderCust(); };
+    counter.appendChild(wipe);
+  }
   det.appendChild(counter);
 
   const shelf = document.createElement("div");
@@ -4269,6 +4283,17 @@ function renderCust() {
          the correction. */
       custLog.unshift({ round: custTray.slice(), took: truth });
       custLog = custLog.slice(0, 12);
+      /* THE COUNTER EMPTIES, AND NOT MERELY FOR TIDINESS. It did not, and the
+         next round was therefore built ON TOP of the one just answered — so the
+         second round the customer judged was round one plus whatever they added,
+         and what they relayed was a verdict on a round the bartender never
+         poured. In this mode a single wrong answer crosses the truth off the
+         other person's notebook and the night cannot be won, which is exactly
+         the failure the check above exists to prevent, arriving by another door.
+         Nothing is lost from the screen: the round is in "What you've told
+         them" below, with the verdict beside it, and custSaid still holds the
+         sentence telling them what to say. */
+      custTray = [];
       saveCust();
       renderCust();
     };
