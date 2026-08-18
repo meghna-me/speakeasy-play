@@ -107,6 +107,8 @@
   }
   h1{font-family:ui-serif,Georgia,serif;font-size:24px;letter-spacing:-.02em;margin:0}
   .sub{color:var(--dim);font-size:13px;margin:2px 0 0}
+  /* PRO MODE'S ONLY COUNT. Deliberately not .sub — see the markup. */
+  #standing{font-size:13px;font-weight:600;color:var(--brass);margin:0 0 8px}
   /* THE FRAME, and the only sentence on the page that is true of every night.
      Full width and outside the columns: in the masthead it would have been a
      third of a column wide and eight lines tall on a phone. */
@@ -906,6 +908,14 @@
   #logY::after,#logN::after{content:"";display:block;position:sticky;bottom:0;height:15px;
     margin-top:-15px;pointer-events:none;
     background:linear-gradient(transparent,var(--panel2))}
+  /* AND THE TOP, for the same reason and the same way. The list is scrolled to
+     the newest round on every render, so an earlier row is nearly always half
+     out of the box at the top — photographed on a real phone it was a row of
+     glass BOTTOMS with the tops shaved off, sitting under the dashed line, and
+     it reads as a rendering fault rather than as "there is more above". */
+  #logY::before,#logN::before{content:"";display:block;position:sticky;top:0;height:13px;
+    margin-bottom:-13px;pointer-events:none;z-index:1;
+    background:linear-gradient(var(--panel2),transparent)}
   .logcol .mini{flex-wrap:wrap}
   .logcol.y{border-color:color-mix(in srgb,var(--took) 40%,var(--line))}
   .logcol.n{border-color:color-mix(in srgb,var(--slid) 40%,var(--line))}
@@ -1007,7 +1017,7 @@
   .rival{margin:14px 0 0;display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap}
   .invrow{display:block;margin:14px 0 5px;font-size:12px;letter-spacing:.06em;
     text-transform:uppercase;color:var(--dim)}
-  #custName{width:100%;padding:11px 12px;border-radius:9px;border:1px solid var(--line);
+  #custName,#custName2{width:100%;padding:11px 12px;border-radius:9px;border:1px solid var(--line);
     background:var(--panel2);color:var(--ink);font:inherit;font-size:16px}
   /* THE LINK, SHOWN. A share button that hands over something invisible is a
      share button people do not press. Monospace and breakable, because it is an
@@ -1167,8 +1177,22 @@
        "choose a drink from the shelf" and every row on the page ended up a
        different width. Same declaration, opposite meaning, and it only shows on
        screen. */
+    /* NO MAGIC NUMBER. This was `100dvh - 152px`, a hand-measured guess at the
+       height of everything outside the column — and the moment the footer was
+       deleted on 2026-08-18 it over-reserved by 19px (measured at 412x880:
+       real chrome 133px), so the page ended 19px short of the glass with dead
+       space under it, and on a shorter viewport the customer paid the
+       difference out of its own height.
+       The body is the flex column now and this simply takes what is left, so
+       the number cannot go stale again when a row is added or removed. */
+    /* THE PAGE FILLS THE GLASS, so the column below has slack to distribute.
+       This lived in its own @media near the top of the sheet for about four
+       minutes, which is a media block sitting ABOVE the base rules it overrides
+       — the exact failure this file's two viewport blocks are placed at the
+       bottom to avoid, and the gate said so immediately. */
+    body{min-height:100dvh;display:flex;flex-direction:column}
     .wrap{display:flex;flex-direction:column;align-items:stretch;gap:8px;
-      min-height:calc(100dvh - 152px)}
+      flex:1 1 auto;min-height:0}
     /* min-width:0, AND IT IS NOT OPTIONAL. A flex item defaults to
        min-width:auto, which means it refuses to shrink below its CONTENT — so
        the rotary's nine cells (~880px laid end to end) stopped being a
@@ -1284,9 +1308,10 @@
     /* the column headings already say took and sent back, and the exam is
        explained when it starts — neither sentence earns its height here */
     #prompt,.ledger .sub{display:none}
-    /* except the count, which in pro mode is the only one on the phone at all —
-       in standard mode renderStanding puts .hidden on it and that wins */
-    .ledger #standing{display:block}
+    /* tighter here than on a desktop: since the notebook shuts by default on
+       the dailies this line is now on screen every night, and at 8px the picker
+       cleared the fold by -2px. Measured. */
+    #standing{margin-bottom:5px}
     .lday{font-size:11.5px;margin:0 0 3px}
     /* The frame is worth its lines on a phone too, but not at desktop leading.
        12px and not 12.5: measured at 375, the sentence is three lines at 12.5px
@@ -1603,7 +1628,16 @@
            when two-player called renderAll by hand. Nothing is moved now. -->
       <p class="lday" id="dayline"><span id="daytext"></span><span id="nbCountSlot"></span></p>
       <p class="sub" id="prompt" style="margin:0 0 9px"></p>
-      <p class="sub hidden" id="standing" style="margin:0 0 8px;font-weight:600;color:var(--brass)"></p>
+      <!-- NOT .sub, AND NOT INLINE-STYLED. It used to be both, and both were
+           traps. `.sub` put it inside the phone block's `#prompt,.ledger .sub
+           {display:none}`, so the count — which in pro mode is the ONLY count
+           on a phone — had to be exempted by a second, more specific rule two
+           lines below; the gate then reported the exemption as the media block
+           losing, which is exactly the failure that rule is there to catch, and
+           a gate that cries wolf gets muted. And an inline margin outranks
+           every media query, which is the one thing this file's own comments
+           warn about twice. Its styling lives in the sheet now. -->
+      <p class="hidden" id="standing"></p>
       <!-- "BEFORE YOUR SHIFT", NOT "ON THE HOUSE". Both labels said "on the
            house" and they are not the same mechanic. These two rows are
            rule.seedYes and rule.seedNo — CONTENT, two rounds this customer had
@@ -1795,11 +1829,20 @@ db.times    = db.times || [];        // every completed session's duration and p
    reader who knows drinks stalls on it. That tax used to be paid once a round;
    with the notebook on screen it is paid across a dozen sentences a round. */
 db.skin     = db.skin || "cellar";
-/* ?? AND NOT ||. The line above teaches the wrong pattern: `db.notebook || true`
-   is permanently true, so pro mode could be switched on and would silently
-   switch itself back off on the next load. Only `??` lets a stored `false`
-   survive. There is a test that reads this line's source for exactly this. */
-db.notebook = db.notebook ?? true;
+/* THE FLAG IS TRI-STATE, AND ABSENT IS THE INTERESTING STATE. It used to be
+   coerced to `true` on load, which meant the game could never tell "this player
+   has never touched the notebook" from "this player wants it open" — and those
+   want opposite things. Absent now means AUTO: open through the warm-ups, where
+   the pad is the teaching, and shut on the dailies, where reading somebody
+   else's list of sentences is not the game. See nbOn.
+   STILL ONE FLAG. Not a second boolean beside it — two booleans is how two
+   parts of a page end up disagreeing about which mode the player is in, and
+   there is a test that says so.
+   The stamp is a schema marker, not a mode: everyone playing before 2026-08-18
+   has a literal `true` stored by the old coercion, which nobody chose, and
+   without this they would be the only players who never get the new default. */
+if (db.notebook === true && !db.nbAuto) { delete db.notebook; }
+db.nbAuto = 1;
 /* ?shelf=rotary / ?shelf=grid, PERSISTED. Two shelves ship (see shelfMode) and
    the only way to judge which is right is to put both in front of players, so
    the choice has to survive the next page load rather than living in a link
@@ -2903,7 +2946,19 @@ function renderTill() {
    nouns for one object is how a UI starts disagreeing with itself. */
 const NB_WHY = "This notebook is someone else's list. Close it to figure it out yourself.";
 
-const nbOn = () => db.notebook !== false;
+/* WARM-UPS TEACH WITH THE PAD; THE DAILIES ARE THE GAME. A player who has never
+   chosen gets it open while they are learning what a usual is, and shut once
+   they are on the rotation — which is what the panel's own footer has been
+   telling them all along ("Close it to figure it out yourself"). Shipping a
+   default the page describes as the lesser mode was not defensible.
+   THREE KINDS OF NIGHT KEEP IT OPEN whatever the rotation says: a warm-up, a
+   usual a friend set (that link is the first thing many people ever see of this
+   game, and 29 live theories with no pad is not a welcome), and a two-player
+   night, where the pad is the only thing on the device that narrows anything.
+   `??`, NEVER `||` — a stored `false` is a player who chose pro, and `||` would
+   quietly hand them the pad back on their next load. */
+const nbAuto = () => !rule || !rule.fn || !!rule.shared || E.isStarter(rule);
+const nbOn = () => db.notebook ?? nbAuto();
 /* Notebook off IS pro mode. One flag, one name, one code path. */
 const pro  = () => !nbOn();
 
@@ -2938,7 +2993,7 @@ function nbPanel() {
       const shut = () => {
         if (done) return;           // animationend and the fallback both fire
         done = true;
-        db.notebook = false;
+        db.notebook = false;   // explicit, so auto stops applying from here on
         const d = $("nbSheet"); if (d && d.open) d.close();
         save(db); nbReset(); renderAll();
       };
@@ -3710,7 +3765,8 @@ function renderDone() {
      own phone and send one back. It is the only share in the game that needs the
      other person to open it before anything exists, which is exactly why it is
      the one offered at the moment the player has run out of nights. */
-  if ($("getone")) $("getone").onclick = () => offerLink($("getone"), setterLink(), "Link copied — send it");
+  if ($("getone")) $("getone").onclick = () => offerLink($("getone"), setterLink(),
+    "Link copied — send it", "Set me a usual and I'll work out what it is.");
   /* DRAWN ONLY WHEN OPENED, AND THE "ALREADY DRAWN?" TEST IS A FLAG.
      `!canvas.width` looks like the obvious guard and is always false: an
      undrawn canvas reports the HTML default of 300x150, not 0, so the code
@@ -4021,10 +4077,22 @@ function renderCust() {
 
   /* ---------- chosen: the usual, then the link ---------- */
   const hyp = HYPOTHESES.find(x => x.id === custPick);
-  const link = usualLink(hyp.id);
+  /* `let`, AND EVERY READER GOES THROUGH IT. The name is baked into the code
+     (engine.shareCode carries it), and this card used to show the name field
+     ONLY on the choosing screen — so anyone who picked a usual before typing
+     their name found the field gone and the link already made, with no way back
+     that did not also re-deal the six sentences and lose the usual they had
+     just chosen. Reported from a real phone.
+     The field is here too now, and editing it re-mints the link in place rather
+     than re-rendering the card, because a full re-render on every keystroke
+     takes the caret out of the box the player is typing in. */
+  let link = usualLink(hyp.id);
   el.insertAdjacentHTML("beforeend",
     `<p class="invrow" style="margin-top:16px">Your usual — they can't see this</p>
-     <p class="reveal usualbox">${custText(hyp)}</p>`);
+     <p class="reveal usualbox">${custText(hyp)}</p>
+     <label class="invrow" for="custName2" style="margin-top:14px">Your name</label>
+     <input id="custName2" type="text" autocomplete="off" maxlength="18"
+       placeholder="so they know whose it is">`);
 
   /* THE SHARE IS WHAT THE CARD IS FOR, so it is the only filled control on it.
      navigator.share is what puts this into WhatsApp in one tap on a phone, and
@@ -4066,11 +4134,29 @@ function renderCust() {
     /* offerLink is called first and synchronously inside the handler, so the
        transient user activation navigator.share requires is still live — an
        await before it would lose the gesture */
-    send.onclick = () => offerLink(send, link);
+    /* THE NAME IS THE INVITATION. A bare link in a chat window is a link
+       nobody opens; "Meghna's set you one" is a person asking. Read at click
+       time, not captured, so a name typed after the usual was picked is the
+       name that goes out. */
+    send.onclick = () => offerLink(send, link, "Link copied",
+      `${db.myName ? db.myName + " has" : "A friend has"} set you a usual at the bar. `
+      + `Work out what it is.`);
     row.appendChild(send);
   }
   el.appendChild(row);
   el.insertAdjacentHTML("beforeend", `<p class="linkbox">${link}</p>`);
+  {
+    const box = el.querySelector(".linkbox");
+    const field = el.querySelector("#custName2");
+    field.value = name;
+    field.oninput = () => {
+      db.myName = field.value.trim().slice(0, 18);
+      save(db);
+      link = usualLink(hyp.id);        // the handlers above close over this
+      box.textContent = link;
+      if (copy.textContent === "Copied") copy.textContent = "Copy link";
+    };
+  }
   /* SAID, NOT HIDDEN. The card still builds the link on a file: page, because
      copying it is how the thing gets tested locally — but a link nobody else can
      open is exactly the sort of quiet failure that has somebody swearing at
@@ -4273,10 +4359,23 @@ const sendable = url => /^https?:$/.test(new URL(url, location.href).protocol);
    `title` and `url`, never `text`: iOS hands text and url to most targets as one
    string and the result is the blurb and the link fighting each other. The words
    live in the og: tags, which every chat app reads off the URL. */
-function offerLink(btn, url, done = "Link copied") {
-  if (navigator.share && sendable(url)) return navigator.share({ title: "Speakeasy", url })
-    .catch(() => { /* the sheet was dismissed, which is not a failure */ });
-  navigator.clipboard?.writeText(url);
+/* WORDS, BECAUSE THE PREVIEW CANNOT CARRY THEM. This shared `{title, url}` and
+   left the message to the Open Graph tags — correct reasoning for a fact that
+   is true of every link, and useless for the one fact that matters here, which
+   is WHO set it and what the receiver is being asked to do. og: tags are
+   per-PAGE and static; "Meghna set you one" is per-LINK, and no amount of head
+   markup can say it without a server generating a page per invite.
+   So the sentence rides in `text`, with the address inside it. `text` and `url`
+   TOGETHER is the pairing iOS mangles — see sharing.md — and this passes only
+   one of them, so the trap is avoided rather than re-entered. The link preview
+   still renders from the URL in the text; the words are now on top of it. */
+function offerLink(btn, url, done = "Link copied", blurb = "") {
+  const body = blurb ? `${blurb}\n${url}` : url;
+  if (navigator.share && sendable(url))
+    return navigator.share(blurb ? { title: "Speakeasy", text: body }
+                                 : { title: "Speakeasy", url })
+      .catch(() => { /* the sheet was dismissed, which is not a failure */ });
+  navigator.clipboard?.writeText(body);
   btn.textContent = done;
 }
 
