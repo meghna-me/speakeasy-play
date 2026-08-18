@@ -293,7 +293,7 @@
      measured, not guessed. Background and z-index are not optional: without
      them the rows scroll straight through the glasses (the heading learned
      this first). */
-  .given{border-bottom:1px dashed var(--line);padding-bottom:7px;margin-bottom:5px;flex:0 0 auto}
+  .given{border-bottom:1px dashed var(--line);padding-bottom:7px;margin-bottom:5px}
   .given .lab{font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--dim);margin-bottom:2px}
   /* 46px because the tallest silhouette in every skin is 60 units and
      SCALE.log is .7 here — 42px drawn, and the old 40 sliced the foam off a
@@ -895,8 +895,8 @@
      text. --panel2 is what .logcol itself is painted with, so it matches. */
   .logcol h3{margin:0 0 5px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;
     flex:0 0 auto;padding:1px 0 3px}
-  /* THE ROUNDS THE PLAYER POURED — the only part of a column that moves. */
-  #logY,#logN{overflow-y:auto;min-height:0;flex:1 1 auto}
+  /* THE WHOLE COLUMN BELOW THE HEADING MOVES — openers included. */
+  .colscroll{overflow-y:auto;min-height:0;flex:1 1 auto}
   /* AND A FADE AT THE BOTTOM. The top edge got one when the heading was
      pinned — a glass sliced by a hard edge reads as broken artwork rather than
      as content continuing — and the bottom edge, which slices a row on every
@@ -905,7 +905,7 @@
      sitting on the panel's border looks like a rendering fault.
      A sticky pseudo-element as the column's last child, pulled back by its own
      height so it overlays the final row instead of adding to the scroll. */
-  #logY::after,#logN::after{content:"";display:block;position:sticky;bottom:0;height:15px;
+  .colscroll::after{content:"";display:block;position:sticky;bottom:0;height:15px;
     margin-top:-15px;pointer-events:none;
     background:linear-gradient(transparent,var(--panel2))}
   /* AND THE TOP, for the same reason and the same way. The list is scrolled to
@@ -913,7 +913,7 @@
      out of the box at the top — photographed on a real phone it was a row of
      glass BOTTOMS with the tops shaved off, sitting under the dashed line, and
      it reads as a rendering fault rather than as "there is more above". */
-  #logY::before,#logN::before{content:"";display:block;position:sticky;top:0;height:13px;
+  .colscroll::before{content:"";display:block;position:sticky;top:0;height:13px;
     margin-bottom:-13px;pointer-events:none;z-index:1;
     background:linear-gradient(var(--panel2),transparent)}
   .logcol .mini{flex-wrap:wrap}
@@ -1306,7 +1306,7 @@
        what gives: one row and a scroll. Measured — anything more and the picker
        goes below the fold, which the gate catches. The taller block below buys
        it back where there is height to buy it with. */
-    .ledger #logY,.ledger #logN{max-height:40px}
+    .ledger .colscroll{max-height:92px}
     /* the given rounds are reference, not reading matter: smaller than the
        rounds the player is actually working with */
     .given{padding-bottom:5px;margin-bottom:4px}
@@ -1399,7 +1399,7 @@
   @media (max-width:900px) and (min-height:721px){
     #customer{flex:1 1 auto;min-height:46px}
     /* and the poured rounds get room to be a list rather than a peephole */
-    .ledger #logY,.ledger #logN{max-height:clamp(58px,11vh,116px)}
+    .ledger .colscroll{max-height:clamp(110px,19vh,190px)}
   }
 
   .tok{flex:0 0 auto;cursor:pointer;display:block;overflow:visible}
@@ -1667,13 +1667,24 @@
       <div class="logs">
         <div class="logcol n">
           <h3 id="logNT"></h3>
-          <div class="given"><div class="lab">before your shift</div><div class="mini" id="seedN"></div></div>
-          <div id="logN"></div>
+          <!-- THE OPENERS SCROLL WITH EVERYTHING ELSE. They were the column's
+               fixed head for half a day, which fixed the overlap and said the
+               wrong thing: two rounds the player never poured, permanently on
+               screen, costing ~78px of a ~170px pane, while their own rounds
+               were the part that scrolled away. That ranks given evidence above
+               earned evidence, which is backwards. Only the heading — the
+               verdict, one line — stays put. -->
+          <div class="colscroll">
+            <div class="given"><div class="lab">before your shift</div><div class="mini" id="seedN"></div></div>
+            <div id="logN"></div>
+          </div>
         </div>
         <div class="logcol y">
           <h3 id="logYT"></h3>
-          <div class="given"><div class="lab">before your shift</div><div class="mini" id="seedY"></div></div>
-          <div id="logY"></div>
+          <div class="colscroll">
+            <div class="given"><div class="lab">before your shift</div><div class="mini" id="seedY"></div></div>
+            <div id="logY"></div>
+          </div>
         </div>
       </div>
       <!-- boxed so the exam can put it away: the ledger stays up during last
@@ -2832,7 +2843,16 @@ function renderLog() {
      is the entire point of this panel. */
   /* EACH COLUMN, ITS OWN. They scroll independently now — a column with two
      rounds in it has no business being dragged by one with nine. */
-  [col[true], col[false]].forEach(c => { c.scrollTop = c.scrollHeight; });
+  /* NEWEST DURING PLAY, OPENERS AT LAST ORDERS. While the night is running the
+     round that just landed is what the player is looking for. At the exam
+     nothing more is arriving and the two rounds they never poured are the ones
+     they cannot re-derive — a consultant hit an empty "They took" column on the
+     screen asking them to judge four unseen rounds. */
+  const top = session.phase !== "play";
+  [col[true], col[false]].forEach(c => {
+    const box = c.closest(".colscroll");
+    if (box) box.scrollTop = top ? 0 : box.scrollHeight;
+  });
 }
 
 /* THE TILL — the night's takings, live, where the strip of marks used to be.
@@ -3352,7 +3372,11 @@ function startExam() {
   /* renderStanding clears the phone's count. Without it the count stays in the
      header — which show("exam") does not hide — still reading a live number and
      still opening the page that is supposed to be shut. */
-  persist(); show("exam"); renderExam(); renderNotebook(); renderStanding();
+  /* renderLog too: the board stays up through last orders, and its scroll
+     pin flips to the openers there — the rounds the player never poured are
+     the ones they cannot re-derive while judging four unseen ones. Without
+     this the pin only ever ran on the way in from a pour. */
+  persist(); show("exam"); renderExam(); renderLog(); renderNotebook(); renderStanding();
 }
 
 function renderExam() {
