@@ -2,6 +2,19 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<!-- THE TAB ICON, INLINE. There was none at all: every browser fell back to a
+     blank tab, and Chrome asked the deployed host for /favicon.ico on every
+     visit and got a 404 — which made "the site issues no network requests" not
+     quite true for the one request nobody had noticed.
+     A data URI rather than a file, because the alternative is a ninth file in
+     the packer's list for 500 bytes, and this costs no request at all.
+     DRAWN FOR 16px, NOT RENDERED FROM tok(). Everywhere else in this repo a
+     second copy of the artwork is a defect, and share.png is deliberately
+     rendered from the real glasses for exactly that reason. A favicon is the
+     one place that argument inverts: at sixteen pixels the real glass — its
+     highlight, its garnish curl, its rim — is four grey pixels. This is a mark,
+     not a picture of a drink, and it is allowed to be its own shape. -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%227%22%20fill%3D%22%2314100f%22%2F%3E%3Cpath%20d%3D%22M8.5%208.5h15l-1.7%2014.2a2.2%202.2%200%200%201-2.2%201.9h-7.2a2.2%202.2%200%200%201-2.2-1.9Z%22%20fill%3D%22%23d4a141%22%2F%3E%3Cpath%20d%3D%22M9.6%2012.5h12.8l-1.4%2011.6H11Z%22%20fill%3D%22%238c1f2c%22%2F%3E%3Ccircle%20cx%3D%2223.6%22%20cy%3D%228.2%22%20r%3D%223.1%22%20fill%3D%22%23e08a3c%22%2F%3E%3C%2Fsvg%3E">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Speakeasy — where the game came from</title>
 <meta name="description" content="The 1960 Wason experiment behind Speakeasy, the daily bar-side logic puzzle: why the card counts surprises rather than hits, and what the notebook is for.">

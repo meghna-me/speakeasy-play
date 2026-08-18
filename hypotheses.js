@@ -92,11 +92,19 @@ const HYPOTHESES = (() => {
        n = 0 : "at least 0" and "at most 4" are tautologies, true of every round
        n = 4 : "exactly 4" IS "at least 4", because 4 is MAX_DRINKS
      Nobody holds a tautology as a theory, so these are not worth keeping. */
-  for (let n = 0; n <= 4; n++) {
+  /* FROM 1, NOT 0, AND THE BOUNDS ARE GUARDED AT BOTH ENDS. A round is 1..4
+     drinks — the empty round left the space on 2026-08-18 — so three sentences
+     stopped saying anything and were removed with it: "there are exactly 0
+     drinks" refuses every round, "there is at least 1 drink" accepts every
+     round, and "there is at most 1 drink" became a second wording of "there is
+     exactly 1". check-rules.mjs fails on all three shapes, which is how they
+     were caught. The `n < 4` guard is the same rule at the top of the range and
+     predates this; the `n > 1` guard is its mirror. Library 80 -> 77. */
+  for (let n = 1; n <= 4; n++) {
     add((C, S, N) => `there ${be(n)} exactly ${items(n, N)}`,  p => p.length === n);
-    if (n > 0 && n < 4)
+    if (n > 1 && n < 4)
       add((C, S, N) => `there ${be(n)} at least ${items(n, N)}`, p => p.length >= n);
-    if (n > 0 && n < 4)
+    if (n > 1 && n < 4)
       add((C, S, N) => `there ${be(n)} at most ${items(n, N)}`,  p => p.length <= n);
   }
 
@@ -142,6 +150,72 @@ const HYPOTHESES = (() => {
   });
   add(() => `the total size is even`,                          p => total(p) % 2 === 0);
   add(() => `no colour appears twice`,                         p => [0, 1, 2].every(c => cnt(p, c) <= 1));
+
+  /* ---------- 2026-08-18: 77 -> 120 ----------
+   *
+   * Three of the original eighty were about the empty round and left with it.
+   * The forty-three below were added in the same change, for two reasons that
+   * are really one: the library is the model of what a player might be
+   * thinking, and a thin model makes puzzles measure easy. Rule 12 fell to five
+   * probes the moment the empty round went — not because the puzzle changed but
+   * because the modelled player had one fewer theory to eliminate — and the fix
+   * for that is a fuller library, not a lower gate. Measured after: rule 12 is
+   * back over the daily floor, and the seed search re-aimed every rule at the
+   * same target it always had.
+   *
+   * EVERY ONE IS BEHAVIOURALLY DISTINCT over the 7,380-round bar, checked by
+   * enumeration before being written here — forty-nine were drafted and six did
+   * not survive: one was a re-wording of an entry already present, and five were
+   * dropped by hand as sentences nobody holds ("there are more drinks than
+   * colours in them" is true of 97% of rounds and is never anybody's theory).
+   * A sentence that survives almost every round is a row that never gets
+   * crossed off, which is clutter on the page and a rival the solver has to
+   * spend a probe on for no reason.
+   *
+   * The COLOUR x SIZE block is the only cross-attribute presence family in the
+   * library, and it is the theory a first-timer reaches for out loud — "they
+   * want a Red Mug in there somewhere". Nine sentences of one shape is a lot,
+   * and it is deliberate: they separate from each other on single-drink rounds,
+   * which is the cheapest probe there is. */
+  const minS = p => Math.min(...p.map(t => t.s));
+  const nC = p => new Set(p.map(t => t.c)).size;
+  const nS = p => new Set(p.map(t => t.s)).size;
+
+  for (let c = 0; c < 3; c++) {
+    add((C) => `there is exactly one ${C[c]}`,                p => cnt(p, c) === 1);
+    add((C) => `there are at least two ${C[c]}`,              p => cnt(p, c) >= 2);
+    add((C) => `there is more ${C[c]} than anything else`,    p => [0, 1, 2].every(d => d === c || cnt(p, c) > cnt(p, d)));
+  }
+  for (let s = 0; s < 3; s++) {
+    add((C, S) => `there is exactly one ${S[s]}`,             p => cntS(p, s) === 1);
+    add((C, S) => `there are at least two ${S[s]}s`,          p => cntS(p, s) >= 2);
+  }
+  for (let c = 0; c < 3; c++) for (let s = 0; s < 3; s++)
+    add((C, S) => `it contains a ${C[c]} ${S[s]}`,            p => p.some(t => t.c === c && t.s === s));
+
+  add((C, S, N) => `there are an even number of ${N.many}`,   p => p.length % 2 === 0);
+  add(() => `every colour appears`,                           p => nC(p) === 3);
+  add(() => `every size appears`,                             p => nS(p) === 3);
+  add(() => `exactly two colours appear`,                     p => nC(p) === 2);
+  add(() => `exactly two sizes appear`,                       p => nS(p) === 2);
+  /* Strictly, where 58 and 60 are the non-strict pair. A player who says "they
+     get bigger" usually means this one, and it dies to any repeated size. */
+  add((C, S, N) => `each ${N.one} is bigger than the one before`,  p => p.every((t, i) => i === 0 || t.s > p[i - 1].s));
+  add((C, S, N) => `each ${N.one} is smaller than the one before`, p => p.every((t, i) => i === 0 || t.s < p[i - 1].s));
+  add(() => `the sizes never increase, and fall at least once`,
+      p => p.every((t, i) => i === 0 || t.s <= p[i - 1].s) && p.some((t, i) => i > 0 && t.s < p[i - 1].s));
+  add((C, S, N) => `the same ${N.one} appears twice`,         p => new Set(p.map(t => `${t.c}${t.s}`)).size < p.length);
+  add((C, S, N) => `the first and last ${N.many} are exactly alike`,
+      p => p.length > 0 && p[0].c === p[p.length - 1].c && p[0].s === p[p.length - 1].s);
+  add((C, S, N) => `the smallest ${N.one} is first`,          p => p.length > 0 && p[0].s === minS(p));
+  add((C, S, N) => `the smallest ${N.one} is last`,           p => p.length > 0 && p[p.length - 1].s === minS(p));
+  add((C, S, N) => `the largest ${N.one} is the only one of its size`, p => p.length > 0 && cntS(p, maxS(p)) === 1);
+  add((C, S, N) => `every ${N.one} is a different size`,      p => nS(p) === p.length);
+  add((C, S, N) => `the first two ${N.many} share a colour`,    p => p.length >= 2 && p[0].c === p[1].c);
+  add((C, S, N) => `the last two ${N.many} share a colour`,     p => p.length >= 2 && p[p.length - 1].c === p[p.length - 2].c);
+  add((C, S, N) => `the first two ${N.many} are the same size`, p => p.length >= 2 && p[0].s === p[1].s);
+  add((C, S, N) => `the last two ${N.many} are the same size`,  p => p.length >= 2 && p[p.length - 1].s === p[p.length - 2].s);
+  add(() => `the colours never go backwards from left to right`, p => p.every((t, i) => i === 0 || t.c >= p[i - 1].c));
 
   return H;
 })();

@@ -60,7 +60,16 @@ function allRounds(sp) {
   const S = spaceOf(sp);
   const hit = _all.get(S.key);
   if (hit) return hit;
-  const out = [[]];
+  /* NO EMPTY ROUND. Serving nothing was a legal move until 2026-08-18 and it
+     cost more than it bought: three of the eighty library sentences existed only
+     to talk about it ("there are exactly 0 drinks", "at least 1", "at most 1" —
+     the first two turn constant and the third becomes "exactly 1"), and a
+     first-timer's commonest mis-tap was calling with an empty counter. Measured
+     before removing it: every rule's truth stays uniquely identifiable, no two
+     shipped rules collapse together, and the page count moves 80 -> 77.
+     `frontier` still starts from the empty round because that is how a round of
+     length 1 gets built; it is simply never emitted. */
+  const out = [];
   let frontier = [[]];
   for (let len = 0; len < MAX_DRINKS; len++) {
     const next = [];
@@ -90,23 +99,77 @@ function newSession(rule, now) {
 
 const callRequired = s => s.probes.length >= FREE_PROBES;
 
-function probe(session, rule, round, call, now) {
+/* `accepted` is the SIXTH argument and is only ever passed in two-player mode —
+   see guestRule. A shipped rule answers for itself and a guest rule cannot,
+   because the usual is in another person's head and reaches the device as a tap.
+   Both directions throw rather than being quietly tolerated: passing a verdict
+   to a rule that owns one would let a caller write any history it liked over a
+   known predicate, and omitting one where nothing can compute it would silently
+   record `undefined` as "sent it back". */
+function probe(session, rule, round, call, now, accepted) {
   if (session.phase !== "play") throw new Error("not in the probing phase");
+  if (!round.length) throw new Error("a round holds at least one drink");
   if (round.length > MAX_DRINKS) throw new Error("a round holds at most " + MAX_DRINKS);
+  if (rule.fn && accepted !== undefined) throw new Error("this rule answers for itself");
+  if (!rule.fn && typeof accepted !== "boolean") throw new Error("the customer has to answer this round");
   const needsCall = callRequired(session);
   if (needsCall && typeof call !== "boolean") throw new Error("call the round before you pour it");
   return {
     ...session,
-    probes: session.probes.concat([{ round, accepted: rule.fn(round), call: needsCall ? call : null }]),
+    probes: session.probes.concat([
+      { round, accepted: rule.fn ? rule.fn(round) : accepted, call: needsCall ? call : null }
+    ]),
     lastActiveAt: now ?? session.lastActiveAt
   };
 }
 
+/* ---------- two-player ----------
+ *
+ * A rule with NO PREDICATE AND NO SEEDS. A friend keeps the usual — invented or
+ * chosen on their own device — and answers each round themselves; the verdict
+ * arrives at `probe` as an argument and nothing about the rule is ever encoded,
+ * transmitted or stored, so there is nothing on this side to leak. The customer
+ * link carries no rule for the same reason: it is the same page in the other
+ * chair.
+ *
+ * Everything downstream reads `rule.fn` and `rule.seedYes` to decide what it can
+ * still honestly do — the notebook still narrows (it only needs the evidence),
+ * the till still pays, and the three things that need to know the answer in
+ * advance go quiet: the regular has nothing to suggest, no class hint can be
+ * computed, and there is no exam, because a device cannot grade a rule it was
+ * never told. Last orders are settled by report instead — see `settle`. */
+function guestRule() {
+  return { n: 0, guest: true, tier: 0, space: null,
+           fn: null, seedYes: null, seedNo: null, par: null,
+           text: () => "" };
+}
+
+/* Last orders in someone else's bar. `right` is what the PLAYER REPORTS hearing
+   back, not a verdict — nothing here can check it, which is exactly why a guest
+   night is worth no more than the two people playing it agree it is. Kept
+   separate from `answerExam` so that no shipped rule can ever be settled this
+   way: this throws on anything that has a predicate to be graded against. */
+function settle(session, rule, right, now) {
+  if (session.phase !== "play") throw new Error("the night is already over");
+  if (rule.fn) throw new Error("a rule with a predicate is settled by the exam");
+  return { ...session, phase: "done", told: !!right,
+           lastActiveAt: now ?? session.lastActiveAt };
+}
+
 /* ---------- what the player has actually been shown ---------- */
 
+/* THE NUMBER OF FREE OPENERS IS 2 OR 0, and every consumer of `diedOn` needs to
+   know which — the index contract in notebookState is written in terms of it. A
+   guest rule has no seeds because a friend hands over nothing before the first
+   pour, so the page must not assume the first two entries are openers. It reads
+   `seeds` off notebookState rather than counting for itself. */
+const seedCount = rule => (rule.seedYes && rule.seedNo) ? 2 : 0;
+
 function evidence(session, rule) {
-  return [{ round: rule.seedYes, accepted: true }, { round: rule.seedNo, accepted: false }]
-    .concat(session.probes.map(p => ({ round: p.round, accepted: p.accepted })));
+  const openers = seedCount(rule)
+    ? [{ round: rule.seedYes, accepted: true }, { round: rule.seedNo, accepted: false }]
+    : [];
+  return openers.concat(session.probes.map(p => ({ round: p.round, accepted: p.accepted })));
 }
 
 /* Hypotheses consistent with every data point, minus any that is merely the
@@ -114,9 +177,14 @@ function evidence(session, rule) {
 function survivors(session, rule, library) {
   const ev = evidence(session, rule);
   const all = allRounds(rule.space);
+  /* THE TRUTH IS ONLY EXCLUDED WHERE THERE IS ONE TO EXCLUDE. A guest rule has
+     no predicate, so there is nothing to compare against and every consistent
+     sentence stands — including, with luck, the one the friend actually picked.
+     That is the honest answer: in two-player mode the device does not know which
+     row is right, and a notebook that pretended otherwise would be guessing. */
   return library.filter(h =>
     ev.every(e => h.fn(e.round) === e.accepted) &&
-    !all.every(r => h.fn(r) === rule.fn(r))
+    (!rule.fn || !all.every(r => h.fn(r) === rule.fn(r)))
   );
 }
 
@@ -140,8 +208,11 @@ function neighbours(round, sp) {
   for (let i = 0; i < round.length; i++)
     for (const d of S.drinks) if (d.c === round[i].c && d.s !== round[i].s)
       out.push(round.map((t, j) => j === i ? { c: t.c, s: d.s } : t));
+  /* > 1, because dropping the only drink would emit the empty round, which is
+     no longer in the space — a neighbour outside allRounds would be offered by
+     the regular and could never be poured. */
   for (let i = 0; i < round.length; i++)
-    out.push(round.filter((_, j) => j !== i));
+    if (round.length > 1) out.push(round.filter((_, j) => j !== i));
   if (round.length < MAX_DRINKS)
     for (const d of S.drinks) out.push(round.concat([{ c: d.c, s: d.s }]));
   return out;
@@ -160,6 +231,7 @@ function neighbours(round, sp) {
    Deterministic — walks in order, ties to the shorter round — so the same
    evidence always yields the same suggestion. */
 function suggestProbe(session, rule, library) {
+  if (!rule.fn) return null;          // the regular cannot suggest against a usual nobody told him
   const alive = survivors(session, rule, library);
   if (!alive.length) return null;               // she is already pinned
   const seen = new Set(session.probes.map(p => roundKey(p.round)));
@@ -320,6 +392,7 @@ function answerExam(session, answers, now) {
    library cannot cover every theory a person might hold, so a confident wrong
    attribution is worse than silence. */
 function nameRival(session, rule, library) {
+  if (!rule.fn) return null;          // no truth to separate a rival FROM
   const rivals = survivors(session, rule, library);
   if (rivals.length !== 1) return null;
   const rival = rivals[0];
@@ -354,6 +427,96 @@ function score(session, rule) {
            toPar: par === null ? null : effective - par };
 }
 
+/* ---------- the till ----------
+ *
+ * ONE ECONOMY, IN TWO UNITS. The game already charged in rounds and already
+ * called the charge a tab ("6 rounds on your tab"), so money is not a second
+ * currency bolted alongside `effective` — it IS `effective`, priced. Every
+ * quantity below is one `score()` already returns; nothing new is tracked and
+ * nothing is counted twice. Adding a parallel score was the alternative and it
+ * would have put two numbers for one night on one screen, which is the defect
+ * `db.times` already has.
+ *
+ * The three rates live here rather than at the top of the file with FREE_PROBES
+ * because they are a rate card: each is meaningless without the others, and
+ * moving one without re-reading the rest changes what a night is worth. */
+const SERVE_COST   = 2;    // stock, per round poured — rounds on the house are not charged
+const SETTLE_BONUS = 40;   // what the night pays out when last orders are passed
+/* THERE IS NO PER-ROUND EARNING TERM, AND THERE MUST NEVER BE ONE.
+   A CALL_RIGHT = 5 existed here for one afternoon and it was a money printer.
+   Any positive per-round term beats SERVE_COST and makes each additional round
+   worth (term - SERVE_COST) forever: measured, grinding the round space paid
+   $22,177 against an honest par night's $52, and payout rose monotonically with
+   rounds poured — the exact inverse of the score it claims to be.
+   Paying for correct calls was also in flat contradiction with the game: the
+   nudge line says "a round you're already sure about teaches you nothing" and
+   shareMarks' own comment says a high hit rate "mostly measures padding". The
+   notebook narrows to a single row at median round 5, so after that every call
+   is right for free and the default mode is the faucet.
+   The only safe shape is a FIXED payout minus a per-round cost, which is what is
+   left: takings fall as the night lengthens, exactly as the score rises. Adding
+   any earning term — for correct calls, for surprises, for anything counted per
+   round — reopens this, because being paid to be wrong farms just as well as
+   being paid to be right. */
+
+/* `rule` is optional and only reaches score() for par, which the till ignores —
+   the signature matches score()'s so the two are called the same way. */
+function takings(session, rule) {
+  const s = score(session, rule);
+  /* ONLY THE FIRST TIME A ROUND IS SERVED CAN PAY.
+     A round already served has a known answer, so calling it right is not a
+     judgement — it is reading the ledger. Paying for it made repeats worth
+     CALL_RIGHT - SERVE_COST each, forever: pour the same drink, call the answer
+     you were just shown, take $3, repeat. That is the exam farm again in a
+     different currency, and the fix is the same one — you are paid for what you
+     worked out, never for what you were told.
+     Deliberately NOT a ban on repeating: a repeat still costs its pour, and a
+     player who wants to re-check something may. It simply cannot earn. */
+  const seen = new Set();
+  const callsRight = session.probes.filter(p => {
+    const k = roundKey(p.round);
+    const first = !seen.has(k);
+    seen.add(k);
+    return first && p.call !== null && p.call === p.accepted;
+  }).length;
+  /* GIVING UP ALSO SETS phase:"done". Paying the settle bonus on it would make
+     walking out the best-paid way to end a night you were losing. */
+  /* TWO-PLAYER PAYS ON THE FRIEND'S WORD. `told` is only ever present on a
+     guest night (see settle) and is the player's report of what they heard back;
+     a night the friend did not accept is finished but unsettled, exactly like
+     giving up, and pays nothing. Absent means a normal night, so this cannot
+     change what any shipped rule pays. */
+  const settled = session.phase === "done" && !session.gaveUp && session.told !== false;
+  /* ON THE HOUSE MEANS ON THE HOUSE. The opening rounds carry call:null because
+     the game does not ask for a prediction yet, and the page has always called
+     them "on the house" — so charging for them made the till contradict the
+     label, and worse, it opened every night at a loss: two free rounds with no
+     call to get right is -$4 before the player has been asked to do anything.
+     A game that greets you by telling you you are behind is not the low-stress
+     mode it claims to be.
+     Bounded, not open-ended: probe() drops the call itself for the first
+     FREE_PROBES rounds and requires one after that, so at most FREE_PROBES
+     rounds can ever be free and this cannot be farmed by declining to call. */
+  const onTheHouse = session.probes.filter(p => p.call === null).length;
+  const poured  = SERVE_COST * (s.probes - onTheHouse);
+  /* the tab proper: failed last orders and hints, already triangular in
+     examPenalty, converted at the pour rate rather than given a rate of their own */
+  const tab     = SERVE_COST * (s.penalty + s.hints);
+  const bonus   = settled ? SETTLE_BONUS : 0;
+  /* FIXED PAYOUT MINUS A PER-ROUND COST. No term rises with the number of
+     rounds, so takings fall as the night lengthens — the same direction the
+     score moves, which is what "one economy" was supposed to mean and did not.
+     `callsRight` is still reported because it is honest feedback, but nothing
+     here multiplies by it: the moment money references a per-round count again,
+     the printer is back. */
+  const raw     = bonus - poured - tab;
+  /* FLOORED AT ZERO, AND SAID SO. A bartender in debt is a losing screen, and
+     the mode with the notebook open is the one that is meant to be low-stress;
+     `short` lets the page word a bad night without printing a negative. */
+  return { settled, callsRight, poured, tab, bonus, onTheHouse,
+           total: Math.max(0, raw), raw, short: raw < 0 };
+}
+
 /* ---------- how much is left to work out ---------- */
 
 /* Theories still standing, counting the truth. The single most motivating
@@ -363,7 +526,11 @@ function score(session, rule) {
    declare. `survivors` deliberately excludes the truth and anything merely
    restating it, so the honest count is one more than it returns. */
 function standing(session, rule, library) {
-  return survivors(session, rule, library).length + 1;
+  /* +1 for the truth, which survivors deliberately drops — but only where there
+     IS one. A guest rule has no predicate to exclude, so survivors already
+     counts every sentence still alive and adding one would report a theory that
+     is not on the page. */
+  return survivors(session, rule, library).length + (rule.fn ? 1 : 0);
 }
 
 /* ---------- the way out ---------- */
@@ -392,6 +559,166 @@ function stuck(session, rule) {
      is precisely where a new player gets stuck. Found by being stuck there. */
   const line = s.par ?? NO_PAR_LINE;
   return session.failedExams > 0 || s.effective > line + STUCK_OVER;
+}
+
+/* ---------- a usual somebody set for you ----------
+ *
+ * A shipped rule is CONTENT: its seeds were searched offline and its par was
+ * measured beside them, and rules.js carries both so that a change to the
+ * hypothesis library cannot silently move a player's par mid-week. A rule a
+ * friend picked has no content behind it — it is one library sentence, chosen a
+ * minute ago — so the two numbers rules.js would have carried are measured here,
+ * at the moment the link is opened.
+ *
+ * DETERMINISTIC, and that is the whole reason `rng` is an argument. The same
+ * link must deal the same night to everybody who opens it: the setter sends one
+ * link to five friends and their scores are only comparable if the openers and
+ * the par are the same five times. `seededRng(hyp.id * 7919)` is derived from
+ * the only thing the link carries, so nothing about WHO opened it or WHEN can
+ * reach the search.
+ *
+ * The search is the same shape as tools/authoring.mjs — aim at TARGET, treat
+ * the solver's cap as invalid, break ties toward shorter openers — just smaller,
+ * because it runs on a phone while somebody waits. Measured at 40x40: about a
+ * tenth of a second against the offline 120x120.
+ *
+ * WHY THIS IS ALLOWED TO COMPUTE A PAR when the engine is otherwise forbidden
+ * to: the ban exists so that par and seeds travel together and cannot drift
+ * apart. Here they are produced in the same call from the same rng, which is
+ * that guarantee holding rather than being broken.
+ */
+const SHARE_TARGET = 6;      // the same number authoring.mjs aims every daily at
+/* 32x32. Measured over the sentences the picker actually offers: 20 lets a rule
+   through at nineteen probes, 26 still does, 32 does not, and the cost is 138ms
+   against 55 — a tenth of a second once, while somebody opens a link, against a
+   night that cannot be solved. */
+const SHARE_SAMPLE = 32;
+
+function sharedRule(hyp, library, rng) {
+  const all = allRounds(null);
+  const yes = shuffle(all.filter(hyp.fn), rng).slice(0, SHARE_SAMPLE);
+  const no  = shuffle(all.filter(r => !hyp.fn(r)), rng).slice(0, SHARE_SAMPLE);
+  const base = { n: 0, shared: true, tier: 0, space: null, fn: hyp.fn, hyp: hyp.id };
+  let best = null;
+  for (const y of yes) for (const n of no) {
+    const probes = playerSolverProbes({ ...base, seedYes: y, seedNo: n }, library);
+    if (probes >= 40) continue;                       // never converged: not a puzzle
+    const cost = Math.abs(probes - SHARE_TARGET) * 100 + y.length + n.length;
+    if (!best || cost < best.cost) best = { cost, probes, y, n };
+    /* the floor: on target, with two single-drink openers. Nothing can beat it,
+       so stop looking — deterministic, because the walk order is. */
+    if (best.cost <= 2 + SHARE_TARGET * 0 + 2) break;
+  }
+  /* A sentence with no separating pair at all cannot be dealt. Callers get null
+     and say so, rather than opening a night that can never be finished — every
+     shipping library entry passes, but a library is content and content moves. */
+  if (!best) return null;
+  return { ...base, seedYes: best.y, seedNo: best.n, par: best.probes };
+}
+
+/* ---------- the link ----------
+ *
+ * What travels: ONE HYPOTHESIS ID and the setter's own name. Nothing else — not
+ * the seeds, not the par, not a session — because everything else is derived
+ * from the id by sharedRule, identically on every device that opens it.
+ *
+ * OBFUSCATED, NOT ENCRYPTED, AND THIS FILE SAYS SO RATHER THAN IMPLYING
+ * OTHERWISE. `?u=BQAA` with the number visible would be read by the first
+ * person who glanced at the address bar; XOR against a constant means it is not
+ * read by accident. Anyone who wants the answer can have it in a minute, and
+ * that was already true of every night this game deals — rules.js ships to the
+ * device, and tools/pack.mjs applies exactly this much deterrence to it and no
+ * more. A game whose whole subject is working something out cannot be defended
+ * from a player who would rather look it up, and pretending otherwise here
+ * would be the only dishonest line in the file.
+ *
+ * base64url by hand, because btoa/atob are deprecated in Node and this has to
+ * run identically in both — the tests are the only thing that can check it. */
+const SHARE_KEY = [0x5b, 0xa7, 0x3e, 0xd1, 0x6c];
+const B64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+
+function b64url(bytes) {
+  let out = "";
+  for (let i = 0; i < bytes.length; i += 3) {
+    const a = bytes[i], b = bytes[i + 1], c = bytes[i + 2];
+    const n = (a << 16) | ((b ?? 0) << 8) | (c ?? 0);
+    out += B64[(n >> 18) & 63] + B64[(n >> 12) & 63];
+    if (b !== undefined) out += B64[(n >> 6) & 63];
+    if (c !== undefined) out += B64[n & 63];
+  }
+  return out;
+}
+function unb64url(str) {
+  const out = [];
+  for (let i = 0; i < str.length; i += 4) {
+    const q = [0, 1, 2, 3].map(k => B64.indexOf(str[i + k]));
+    if (q[0] < 0 || q[1] < 0) return null;                  // a truncated or edited link
+    const n = (q[0] << 18) | (q[1] << 12) | (Math.max(q[2], 0) << 6) | Math.max(q[3], 0);
+    out.push((n >> 16) & 255);
+    if (q[2] >= 0) out.push((n >> 8) & 255);
+    if (q[3] >= 0) out.push(n & 255);
+  }
+  return out;
+}
+const SHARE_NAME_MAX = 18;
+
+function shareCode(hypId, name) {
+  const bytes = [hypId & 255,
+    ...new TextEncoder().encode(String(name ?? "").slice(0, SHARE_NAME_MAX))];
+  return b64url(bytes.map((b, i) => b ^ SHARE_KEY[i % SHARE_KEY.length]));
+}
+
+/* Null for anything it cannot read, and the caller deals an ordinary night
+   instead. A link is a thing people forward, truncate and retype, so a broken
+   one has to be a shrug rather than a broken page. */
+function readCode(code, library) {
+  if (typeof code !== "string" || !code.length) return null;
+  const raw = unb64url(code);
+  if (!raw || !raw.length) return null;
+  const bytes = raw.map((b, i) => b ^ SHARE_KEY[i % SHARE_KEY.length]);
+  const hyp = library.find(h => h.id === bytes[0]);
+  if (!hyp) return null;
+  let name = "";
+  try { name = new TextDecoder("utf-8", { fatal: true }).decode(new Uint8Array(bytes.slice(1))); }
+  catch { name = ""; }
+  /* a name is decoration and must never be able to break the night, so anything
+     unprintable is dropped rather than rejected */
+  name = name.replace(/[\u0000-\u001f\u007f]/g, "").slice(0, SHARE_NAME_MAX).trim();
+  return { hyp, name };
+}
+
+/* ---------- how the night is reading from the other side of the counter ----------
+ *
+ * ONE derivation, in the engine, because the page may not hold a second opinion
+ * about how the night is going. It reads `score()` and the phase and nothing
+ * else — no timers, no round-by-round state — so a session restored from
+ * storage gets the same answer as the one that produced it.
+ *
+ * The ladder is the SAME evidence `stuck` already uses, pushed one rung finer:
+ * `stuck` answers "should the way out be on screen", this answers "how does the
+ * customer look while you decide". Sharing the line means the figure cannot
+ * still be relaxed on the screen that offers to end the night for you.
+ *
+ *   easy        under the line
+ *   waiting     approaching it
+ *   impatient   past it — the same threshold the nudge line starts counting at
+ *   sour        past it with room to spare, or last orders already failed;
+ *               this is exactly `stuck`
+ *   pleased     settled
+ *
+ * WARM-UPS NEVER SOUR. A starter is a ninety-second lesson and its whole job is
+ * to be survivable; a figure glowering at someone on their second ever round
+ * teaches them the game is hostile, not that they are slow. Held rules and
+ * ladder rungs carry no par for the same reason, so they take NO_PAR_LINE — the
+ * one number the rest of the engine already uses when par is absent. */
+function mood(session, rule) {
+  if (session.phase === "done") return session.gaveUp ? "sour" : "pleased";
+  if (isStarter(rule)) return "easy";
+  const s = score(session, rule);
+  if (stuck(session, rule)) return "sour";
+  const line = s.par ?? NO_PAR_LINE;
+  const over = s.effective - line;
+  return over > 0 ? "impatient" : over > -2 ? "waiting" : "easy";
 }
 
 /* ---------- what she is not watching ---------- */
@@ -470,6 +797,7 @@ const ignoresOrder = rule => decidedWithout(rule.fn, rule.space, "order");
    that kills the most theories the player is actually still carrying, so it is
    never a true fact that tells them nothing. */
 function classHint(session, rule, library) {
+  if (!rule.fn) return null;          // nothing to be invariant under
   const alive = survivors(session, rule, library);
   if (!alive.length) return null;
   const sp = roundSpace(rule);
@@ -712,7 +1040,11 @@ function notebookState(session, rule, library) {
              familyLabel: cls.familyLabel, text: cls.text,
              alive: diedOn === null, diedOn };
   });
-  return { entries, standing: entries.filter(e => e.alive).length };
+  /* `seeds` is how many leading entries of `evidence` are FREE OPENERS rather
+     than the player's own rounds — 2 normally, 0 in two-player mode. The page
+     needs it to turn a diedOn into "round N", and counting for itself is how the
+     two would drift. */
+  return { entries, seeds: seedCount(rule), standing: entries.filter(e => e.alive).length };
 }
 
 /* Which row IS her rule. Separate from the page on purpose: the page is read
@@ -721,10 +1053,58 @@ function notebookState(session, rule, library) {
    silent wrong answer would be worse than none. Tested to be non-null for every
    shipping rule, because that is the promise the header makes. */
 function notebookTruth(rule, library) {
+  if (!rule.fn) return null;          // two-player: the device was never told which row is right
   const rec = notebookOf(rule, library);
   const sig = verdictsOf(rule.fn, rec.space).key;
   for (const [id, s] of rec.sigs) if (s === sig) return id;
   return null;
+}
+
+/* ---------- the sentence the player actually solved ----------
+ *
+ * The reveal prints `rule.text()`, which is the AUTHOR'S wording. The notebook
+ * spends the whole night crossing sentences out until one is left, and that one
+ * is a LIBRARY wording. They mean the same thing and they do not read the same,
+ * and at the moment of reveal that is a player stopping to ask whether they got
+ * it — two playtesters did, independently, on rule 13.
+ *
+ * Both sentences are canonical and neither should go: the author's is written
+ * for the bar the rule is played in, and the ladder's whole design REQUIRES a
+ * rung's reveal to differ from its base rule's (rule 103 reveals "every shot
+ * comes before every mug" over a predicate the library calls "the sizes never
+ * decrease"). So the reveal shows the pad's line as well — but only when it is
+ * far enough from the author's to be worth a line.
+ *
+ * MEASURED, not guessed. Over the 26 shipping rules the overlap of content
+ * words runs 0.00 to 1.00, and it is bimodal: fourteen rules sit at 0.75 or
+ * above, where the two sentences are plainly the same sentence, and twelve at
+ * 0.57 or below, where they are not. Rule 13 — the reported case — is 0.57, and
+ * the worst are rules 5, 20 and 103 at 0.00, where the two share no content word
+ * at all. The threshold sits in the gap. */
+const REVEAL_OVERLAP = 0.75;
+/* Words that carry no content, so a difference in them is not a difference in
+   meaning. Deliberately short: this is a similarity measure, not a parser, and
+   every word it drops is a word that cannot then distinguish two sentences. */
+const REVEAL_STOP = new Set(["the", "a", "an", "is", "are", "of", "in", "it", "its",
+  "and", "or", "to", "at", "one", "ones", "never", "that", "this"]);
+const revealWords = s => new Set(
+  /* parentheticals are tie notes — the author explaining an edge the library
+     sentence has no room for — and counting them would make every rule that has
+     one look different from its own class */
+  s.toLowerCase().replace(/\([^)]*\)/g, "").replace(/[^a-z0-9 ]/g, " ")
+   .split(/\s+/).filter(w => w && !REVEAL_STOP.has(w)));
+
+/* Null when there is nothing worth adding: no truth on the page (two-player),
+   or a wording close enough that printing it twice is noise. */
+function revealAlso(rule, library, C, S, N) {
+  const id = notebookTruth(rule, library);
+  if (id == null) return null;
+  const cls = notebookPage(rule, library).find(c => c.id === id);
+  if (!cls) return null;
+  const said = cls.text(C, S, N);
+  const a = revealWords(rule.text()), b = revealWords(said);
+  const shared = [...a].filter(w => b.has(w)).length;
+  return shared / Math.max(a.size, b.size, 1) < REVEAL_OVERLAP ? said : null;
 }
 
 /* ---------- the share card ---------- */
@@ -771,23 +1151,84 @@ function closeNotebook(session, now) {
  * unjudged night prints exactly the card it printed before, byte for byte.
  * Only a session that actually recorded playing with the notebook shut — see
  * closeNotebook — is marked. */
-function shareText(session, rule, glyphs, title, minutes) {
+function shareText(session, rule, glyphs, title, minutes, run) {
   const pro = session.openedBook === false;
   const s = score(session, rule);
   const row = shareMarks(session).map(m => glyphs[m]).join("");
-  /* A failed exam was invisible: a night with two of them printed the same grid
-     and the same "exam 4/4" as a clean one, so a player's best and worst
-     sessions were typographically identical. */
-  /* ?? — a caller may hand over only the three round marks, and a share card
-     that throws is worse than one missing a symbol */
-  const fails = session.failedExams
-    ? " " + (glyphs.failed ?? "X").repeat(session.failedExams) : "";
+  /* THE OUTCOME, IN THE PICTURE. The row is the rounds poured, and for months
+     that was the whole card — which meant a night somebody WON and a night they
+     walked out of produced byte-identical pictures, differing only in a word
+     three lines down that a reader skimming a chat thread never reaches. The
+     one thing a share card has to carry is how it went.
+     NOT the failure cross this replaced. That marked what went wrong, in the
+     round row, on a card somebody had just won; this marks how the night ENDED,
+     it sits outside the run of squares, and on a win it is the only glyph on the
+     card that says so. A player who got there on the second attempt still got
+     there, and the retries are still counted in the tail where the facts live.
+     Absent from `glyphs` means absent from the card, so a caller that has not
+     opted in — every test written before this, and any future one — gets exactly
+     the card it got before. */
+  const settled = session.phase === "done" && !session.gaveUp && session.told !== false;
+  const mark = session.gaveUp ? glyphs.walked : settled ? glyphs.settled : null;
+  const pic = mark ? (row ? row + " " + mark : mark) : row;
+  /* FAILED LAST ORDERS ARE A FACT IN THE TAIL, NOT A CROSS IN THE PICTURE.
+     They used to be appended to the glyph row as "❌", which was wrong twice
+     over. The row is the ROUNDS THE PLAYER POURED — one mark each, in order —
+     and last orders is not a round, so a symbol in that row claimed a fifth
+     round that never happened. And it put a red cross at the end of a card
+     somebody had just WON: the last thing on the picture, after four squares
+     that say "I worked this out", was a failure mark. A player who got there on
+     the second attempt still got there.
+     The information does not go anywhere — a night with two failures still reads
+     differently from a clean one, in the same line as the par and the surprises,
+     where the facts about the night live. */
   const tail = [session.gaveUp ? "gave up" : `${s.effective} rounds`]
     .concat(s.par === null || session.gaveUp ? [] : [`par ${s.par}`])
     .concat(s.surprises.length ? [`${s.surprises.length} surprises`] : [])
+    .concat(session.failedExams ? [`${session.failedExams} retries`] : [])
     .concat(minutes ? [`${minutes} min`] : [])
-    .concat(pro ? ["pro"] : []);
-  return `${title} #${rule.n}\n${row}${fails}\n${tail.join(" · ")}`;
+    .concat(pro ? ["pro"] : [])
+    /* A STREAK IS A REASON TO COME BACK, and it was doing that work only on
+       the reveal, where nobody but the player ever sees it. One night running
+       is not a streak and saying so would be noise. */
+    .concat(run > 1 ? [`${run} nights running`] : []);
+  /* NO NUMBER WHERE THERE IS NO NUMBER. `#n` identifies which night this was,
+     so two cards can be compared — a rule a friend set has no place in that
+     rotation and printing "#0" would invite exactly the comparison it cannot
+     support. The caller passes the title it wants instead. */
+  return `${title}${rule.n ? ` #${rule.n}` : ""}\n${pic}\n${tail.join(" · ")}`;
+}
+
+/* ---------- the streak ----------
+ *
+ * NIGHTS FINISHED, NOT NIGHTS SOLVED. Giving up is a finished night everywhere
+ * else in this engine — it reveals the rule, it is recorded, and it is never
+ * scolded — and a streak that breaks when somebody admits they are stuck would
+ * turn the way out into a punishment, which is exactly what it was built not to
+ * be. The thing worth rewarding is coming back.
+ *
+ * IT DOES NOT BREAK UNTIL A WHOLE DAY IS MISSED. A streak whose last night was
+ * yesterday is still alive today: anyone who plays at eleven on Monday and one
+ * o'clock on Wednesday morning has missed no day, and a stricter rule would
+ * punish them for the clock rather than for not turning up. Two days' silence
+ * ends it.
+ *
+ * Pure, and time is an argument — the same discipline as dailyRule, so a test
+ * can walk a year of dates without touching the system clock. */
+const DAY_MS = 86400000;
+const dayNumber = iso => Math.floor(Date.parse(iso + "T00:00:00Z") / DAY_MS);
+
+function streak(times, todayISO) {
+  const today = dayNumber(todayISO);
+  const days = [...new Set((times || []).map(t => t && t.day).filter(Boolean).map(dayNumber))]
+    /* a clock set forward and back again leaves entries in the future; they are
+       ignored rather than counted, so the streak can never be inflated by one */
+    .filter(d => Number.isFinite(d) && d <= today)
+    .sort((a, b) => b - a);
+  if (!days.length || days[0] < today - 1) return 0;
+  let n = 1;
+  for (let i = 1; i < days.length && days[i] === days[i - 1] - 1; i++) n++;
+  return n;
 }
 
 /* ---------- scheduling ---------- */
@@ -947,12 +1388,14 @@ function seededRng(seed) {
 
 const ENGINE = {
   FREE_PROBES, EXAM_N, EXAM_PENALTY, MAX_DRINKS, MAX_STARTER_TIER, FULL_SPACE,
-  allRounds, roundSpace, inSpace, roundKey, newSession, callRequired, probe, evidence, survivors,
+  allRounds, roundSpace, inSpace, roundKey, neighbours, newSession, callRequired, probe, evidence, survivors,
   buildExam, examSeed, examCharge, examPenalty, declare, answerExam, nameRival, score,
+  takings, SERVE_COST, SETTLE_BONUS, mood,
+  guestRule, settle, seedCount, sharedRule, shareCode, readCode, SHARE_NAME_MAX,
   shareMarks, shareText, suggestProbe, takeHint, openNotebook, closeNotebook,
   standing, giveUp, stuck, classHint, ignoresColour, ignoresSize, ignoresOrder,
-  NOTEBOOK_FAMILIES, familyOf, notebookPage, notebookState, notebookTruth,
-  dailyRule, isWarmUp, isLadder, isStarter, roleOf, starters, ladder,
+  NOTEBOOK_FAMILIES, familyOf, notebookPage, notebookState, notebookTruth, revealAlso,
+  dailyRule, streak, isWarmUp, isLadder, isStarter, roleOf, starters, ladder,
   passRate, equivalent, competentSolverProbes, playerSolverProbes,
   shuffle, seededRng
 };
