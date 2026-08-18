@@ -291,12 +291,7 @@
      measured, not guessed. Background and z-index are not optional: without
      them the rows scroll straight through the glasses (the heading learned
      this first). */
-  .given{border-bottom:1px dashed var(--line);padding-bottom:7px;margin-bottom:5px;
-    position:sticky;top:26px;z-index:2;background:var(--panel2)}
-  /* and what passes UNDER the opener fades, exactly as it does under the
-     heading — a glass sliced by a hard edge reads as broken artwork */
-  .given::after{content:"";position:absolute;left:0;right:0;top:100%;height:13px;
-    background:linear-gradient(var(--panel2),transparent);pointer-events:none}
+  .given{border-bottom:1px dashed var(--line);padding-bottom:7px;margin-bottom:5px;flex:0 0 auto}
   .given .lab{font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--dim);margin-bottom:2px}
   /* 46px because the tallest silhouette in every skin is 60 units and
      SCALE.log is .7 here — 42px drawn, and the old 40 sliced the foam off a
@@ -876,7 +871,18 @@
      rounds. Equal-height columns give both sticky rows the room they need, at
      the cost of one taller empty box, which is the cheaper of the two. */
   .logs{display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:stretch}
-  .logcol{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:8px;min-height:72px}
+  /* HEADER, THEN A SCROLLER OF ITS OWN. One scroller wrapping both columns
+     meant everything moved together and the heading and the openers had to be
+     pinned with `position:sticky` to survive it — which put the two rounds the
+     player NEVER POURED permanently on top, and slid their own rounds
+     underneath, half-hidden behind the given ones. That is the wrong thing to
+     protect: what was given is two fixed rounds that never change, and what is
+     earned is the part that grows.
+     So the given rounds are the column's HEAD — always there, never floating —
+     and only the player's rounds scroll, in their own box, independently per
+     column. No sticky, no z-index, nothing overlapping anything. */
+  .logcol{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:8px;
+    display:flex;flex-direction:column;min-height:72px}
   /* PINNED, because the heading IS the verdict. renderLog scrolls the board to
      the newest round, and these sat inside that scroller — so the moment a
      third round landed, "SENT BACK" and "THEY TOOK" scrolled off the top and
@@ -886,17 +892,20 @@
      The background is not optional: without it the rows scroll THROUGH the
      text. --panel2 is what .logcol itself is painted with, so it matches. */
   .logcol h3{margin:0 0 5px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;
-    position:sticky;top:0;z-index:1;background:var(--panel2);padding:1px 0 3px}
-  /* AND WHAT SCROLLS UNDER IT FADES OUT. renderLog scrolls the board to the
-     newest round, so the opening rounds pass up behind the pinned heading — and
-     a glass sliced off by a hard edge reads as broken artwork rather than as
-     content continuing above.
-     Drawn as a tail hanging off the HEADING, not as a mask on the scroller: a
-     mask on the scroller fades everything inside it, and the heading is inside
-     it, so the labels that make the whole board legible would have faded out
-     first. Sticky is a positioned element, so it can hold this absolutely. */
-  .logcol h3::after{content:"";position:absolute;left:0;right:0;top:100%;height:13px;
-    background:linear-gradient(var(--panel2),transparent);pointer-events:none}
+    flex:0 0 auto;padding:1px 0 3px}
+  /* THE ROUNDS THE PLAYER POURED — the only part of a column that moves. */
+  #logY,#logN{overflow-y:auto;min-height:0;flex:1 1 auto}
+  /* AND A FADE AT THE BOTTOM. The top edge got one when the heading was
+     pinned — a glass sliced by a hard edge reads as broken artwork rather than
+     as content continuing — and the bottom edge, which slices a row on every
+     single render because renderLog scrolls to the newest, never got the same
+     treatment. On a real phone that is the more visible of the two: half a mug
+     sitting on the panel's border looks like a rendering fault.
+     A sticky pseudo-element as the column's last child, pulled back by its own
+     height so it overlays the final row instead of adding to the scroll. */
+  #logY::after,#logN::after{content:"";display:block;position:sticky;bottom:0;height:15px;
+    margin-top:-15px;pointer-events:none;
+    background:linear-gradient(transparent,var(--panel2))}
   .logcol .mini{flex-wrap:wrap}
   .logcol.y{border-color:color-mix(in srgb,var(--took) 40%,var(--line))}
   .logcol.n{border-color:color-mix(in srgb,var(--slid) 40%,var(--line))}
@@ -945,6 +954,30 @@
   .card{background:var(--panel2);border:1px solid var(--line);border-radius:12px;
     padding:18px 14px;text-align:center;margin:14px 0}
   .card .num{font-size:11px;color:var(--dim);letter-spacing:.14em;text-transform:uppercase}
+  /* HIDDEN FOR A SCREENSHOT. Not display:none — the layout must not move, or
+     the shot the player is about to take is of a different screen from the one
+     they were looking at. Blur reads as "deliberately withheld" where a blank
+     reads as broken, and it survives being cropped or re-photographed off
+     another screen, which a black box does not.
+     The glyph card is deliberately NOT in here: it is the part that is meant
+     to travel, and it names nothing. */
+  #doneArea.hush .reveal,
+  #doneArea.hush .sub.also,
+  #doneArea.hush .sub.rival,
+  #doneArea.hush #notebook{filter:blur(9px);user-select:none}
+  #doneArea.hush .reveal{transform:scale(.995)}
+  /* An invitation, not a control: brass and dotted, the same grammar the
+     customer's caption uses, because both are "there is something here". */
+  .peek{background:none;border:0;font:inherit;font-size:12.5px;color:var(--brass);
+    cursor:pointer;padding:0 10px;text-decoration:underline dotted;
+    text-underline-offset:3px;
+    /* 44px, because it is the control the whole screen now depends on: miss it
+       and the game looks like it never told you the answer. */
+    min-height:44px;display:inline-flex;align-items:center;justify-content:center}
+  .peek:hover{text-decoration-style:solid}
+  .peek:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+  @media (prefers-reduced-motion:no-preference){
+    .reveal,.sub.also,.sub.rival,#notebook{transition:filter .18s ease}}
   .card .glyphs{font-size:25px;letter-spacing:4px;margin:12px 0 10px;line-height:1.35;word-break:break-word}
   .card .line{font-size:15px;font-weight:650;font-variant-numeric:tabular-nums}
   .card .key{font-size:11px;color:var(--dim);margin-top:8px}
@@ -1228,11 +1261,25 @@
        height DROPS rather than the cap clipping it: measured, the opening logs
        are 97px against a 100px cap, so the two openers are still whole. */
     .logcol{padding:6px;min-height:0}
-    /* 13vh was 110px, and the two openers alone are 97px of it. The pane is
-       the only place the evidence lives, and #customer is `flex:1 1 0` — it
-       absorbs whatever is spare — so the height comes out of a decorative
-       silhouette rather than out of anything below the fold. */
-    .ledger .logs{max-height:20vh;overflow-y:auto}
+    /* CAPPED WHERE IT SCROLLS. This capped the wrapper, so the openers ate the
+       cap and the player's rounds got what was left; now the openers are the
+       column's head and this is the budget for the POURED rounds alone.
+       #customer is `flex:1 1 0` and absorbs whatever is spare, so this comes
+       out of a decorative silhouette. Its floor is NOT declared here: there is
+       already a conditioned one in the (min-height:721px) block below, and
+       writing a second unconditional one here is the declared-then-overridden
+       mistake that block exists to avoid — the gate caught it immediately. */
+    /* SHORT PHONE, SHORT LIST. At 667px of glass the whole ledger used to be
+       capped at 13vh and the openers scrolled out of it — which is the defect
+       this was all for. Showing them as a fixed head costs about 78px before a
+       single poured round is drawn, so on a short screen the POURED list is
+       what gives: one row and a scroll. Measured — anything more and the picker
+       goes below the fold, which the gate catches. The taller block below buys
+       it back where there is height to buy it with. */
+    .ledger #logY,.ledger #logN{max-height:40px}
+    /* the given rounds are reference, not reading matter: smaller than the
+       rounds the player is actually working with */
+    .given{padding-bottom:5px;margin-bottom:4px}
     .given .mini{min-height:36px}   /* 33px drawn at SCALE.log .55 */
     /* the column headings already say took and sent back, and the exam is
        explained when it starts — neither sentence earns its height here */
@@ -1320,6 +1367,8 @@
      first thing to give way, which is the right thing to lose. */
   @media (max-width:900px) and (min-height:721px){
     #customer{flex:1 1 auto;min-height:46px}
+    /* and the poured rounds get room to be a list rather than a peephole */
+    .ledger #logY,.ledger #logN{max-height:clamp(58px,11vh,116px)}
   }
 
   .tok{flex:0 0 auto;cursor:pointer;display:block;overflow:visible}
@@ -1606,15 +1655,15 @@
      and the game is the thing they talk about. -->
 <div id="custArea" class="hidden"><div class="panel" id="custBody"></div></div>
 
-<!-- ABOUT LIVES HERE NOW. It was the fifth control in the header, at the same
-     weight as the theme switch, and of the things that were up there it had the
-     least claim to the space: it is where the game came from, not something you
-     do to the game. A footer is where a reader already looks for that. It still
-     appears only once there is a night to be curious about — renderControls
-     owns that, and the question it answers has no referent before round one. -->
-<footer class="foot">
-  <a class="hidden" id="aboutLink" href="about.html">Why they keep refusing perfectly good drinks</a>
-</footer>
+<!-- NO FOOTER LINK. There was one — "Why they keep refusing perfectly good
+     drinks", pointing at about.html — and on a real phone it sat at the bottom
+     of a band of empty space below "Ask the regular", because .foot's 22px
+     margin lands after a column that has already used everything it needs. It
+     cost about 68px of the one axis a phone has none of.
+     about.html is NOT orphaned: the ? panel links it, in the place somebody
+     already goes when they want to know why any of this works, and that panel
+     now also carries the sentence the essay exists to deliver. A link that has
+     to be at the bottom of the screen to be found is a link nobody found. -->
 
 <!-- Know your customer. A native <dialog> so ESC, the focus trap and the
      backdrop come for free rather than being re-implemented badly.
@@ -2338,7 +2387,6 @@ function renderControls() {
   /* the About page answers "why do they keep refusing perfectly good drinks?"
      — there is no referent for that question before the first round, so the link
      appears only once one exists. Visibility only: no derivation enters here. */
-  $("aboutLink").classList.toggle("hidden", !(db.times.length || session.probes.length));
 
   /* Clear is built in renderTray now, on the counter itself — see the note
      there. It cannot be built here and appended: renderTray rebuilds the
@@ -2715,14 +2763,27 @@ function renderLog() {
     row.onclick = () => {
       const open = row.classList.toggle("open");
       row.setAttribute("aria-expanded", String(open));
+      /* OPENING A ROW NEAR THE BOTTOM USED TO OPEN IT OUT OF SIGHT. The note is
+         `flex-basis:100%`, so it appears BELOW the glasses — and the pane is
+         capped and already scrolled to the newest round, so on a phone the line
+         the tap exists to reveal landed under the edge and the tap read as
+         doing nothing.
+         The pane is nudged, never the page: scrollIntoView would move the
+         window as well and yank the whole board under the player's thumb. */
+      if (!open) return;
+      const sc = row.parentNode;
+      if (!sc) return;
+      const r = row.getBoundingClientRect(), box = sc.getBoundingClientRect();
+      if (r.bottom > box.bottom) sc.scrollTop += r.bottom - box.bottom + 6;
     };
     col[p.accepted].appendChild(row);
   });
   /* Measured on a phone: 100px of pane holding 136px of content with scrollTop
      pinned at 0, so 11px of the round just served was visible. The newest entry
      is the entire point of this panel. */
-  const sc = document.querySelector(".ledger .logs");
-  if (sc) sc.scrollTop = sc.scrollHeight;
+  /* EACH COLUMN, ITS OWN. They scroll independently now — a column with two
+     rounds in it has no business being dragged by one with nine. */
+  [col[true], col[false]].forEach(c => { c.scrollTop = c.scrollHeight; });
 }
 
 /* THE TILL — the night's takings, live, where the strip of marks used to be.
@@ -3372,6 +3433,14 @@ function renderDone() {
         rule.shared ? `${setBy || "Someone"}'s usual` : "Speakeasy", shown,
         E.streak(db.times, todayISO))
     : "";
+  /* WHY PEOPLE SCREENSHOT THIS SCREEN. The card was reachable only through a
+     quiet button labelled "Copy" — which does not say WHAT it copies, puts text
+     on a clipboard the player then has to paste somewhere else, and carried no
+     link, so anyone receiving it had nothing to tap. A screenshot was simply
+     the easier thing to do, and it is the one that spoils the answer.
+     Where the OS share sheet exists it is one tap to WhatsApp, and the card
+     goes out with the game's own address on it. */
+  const canShare = !!navigator.share && sendable(location.href);
   const riv = E.nameRival(session, rule, HYPOTHESES);
   const quit = !!session.gaveUp;
   const who = db.guestName || "They";
@@ -3530,6 +3599,18 @@ function renderDone() {
   /* not on a give-up: that night is finished, not failed, and it is never
      scolded — but it is not celebrated either. */
   $("doneBody").classList.toggle("a-won", !quit);
+  /* BLURRED BY DEFAULT, because screenshots cannot be prevented and this is the
+     only lever there is: what is on the screen when the shutter goes. A "hide
+     it" button protects only the players who remember to press it, and the
+     player least likely to remember is the one who just won and is reaching for
+     the screenshot in the same movement.
+     It costs a tap at the payoff, and buys back a beat: the sentence arrives
+     when the player asks for it instead of being on the screen before they have
+     finished reading "You had them."
+     TWO-PLAYER IS EXEMPT — that device was never told the usual, so its reveal
+     line is an instruction ("Ask them what it was"), not an answer, and
+     blurring it would hide the only thing the screen has to say. */
+  $("doneArea").classList.toggle("hush", !!rule.fn);
   $("doneBody").innerHTML = `
     <div id="doneSeat" class="figure" data-mood="${E.mood(session, rule)}" aria-hidden="true"></div>
     <div class="headline">${!rule.fn ? (session.told ? `${who} nodded.` : "Not it.")
@@ -3547,6 +3628,15 @@ function renderDone() {
          measures it, and it fires on twelve of the twenty-six shipping rules.
          Pro mode never sees it: there was no pad to leave a sentence standing. -->
     ${alsoLine}
+    <!-- PEOPLE SCREENSHOT THIS SCREEN. The card exists to be shared and gives
+         nothing away, but a screenshot of the whole reveal hands tomorrow's
+         answer to everyone in the thread — and the player taking it usually
+         means the opposite, they are sharing that they GOT it. So: one tap
+         that hides the answer and leaves the brag. The rule, the pad's wording
+         and the rival line all go; the headline, the tally and the glyph card
+         stay, because none of them names a usual. -->
+    ${!rule.fn ? "" : `<p style="margin:4px 0 0"><button class="peek"
+      id="hush" aria-pressed="true">Tap to see their usual</button></p>`}
     <p class="sub tally" aria-label="${quit ? "Gave up" : rounds(s.effective)}${shown ? `, about ${shown} minutes` : ""}. Earned ${t.total} dollars — ${why}.">${tally}</p>
     ${!rule.fn ? "" : `<div class="card">
       <div class="num">${rule.shared ? `${setBy || "Someone"}'s usual` : `Speakeasy #${rule.n}`}</div>
@@ -3556,7 +3646,7 @@ function renderDone() {
     </div>`}
     ${rivalLine}
     <div class="row done-do">
-      ${session.practice || !rule.fn ? "" : `<button class="btn-quiet" id="copy">Copy</button>`}
+      ${session.practice || !rule.fn ? "" : `<button class="btn-quiet" id="copy">${canShare ? "Share" : "Copy"}</button>`}
       ${shut ? `<button class="btn-go" id="getone">Get a friend to set one</button>`
              : `<button class="btn-go" id="next">${nextLabel}</button>`}
     </div>
@@ -3580,7 +3670,42 @@ function renderDone() {
      with the rest of the play column. */
   if (E.isStarter(rule)) { renderNotebook(); renderStanding(); }
   if (riv) renderMini($("sep"), riv.separator);
-  if ($("copy")) $("copy").onclick = () => { navigator.clipboard?.writeText(text); $("copy").textContent = "Copied"; };
+  if ($("copy")) $("copy").onclick = async () => {
+    /* og:url, not location: a player on a phone that opened the file, or on
+       localhost, still sends the address that works for everybody else. */
+    const home = document.querySelector('meta[property="og:url"]')?.content;
+    const body = text + (home ? `\n${home}` : "");
+    /* TEXT ONLY, NEVER text + url. iOS mangles the pair — sharing.md — so the
+       address rides inside the words, which every chat app links anyway. */
+    if (canShare) {
+      try { await navigator.share({ title: "Speakeasy", text: body }); return; }
+      catch { /* the sheet was dismissed; fall through and copy instead */ }
+    }
+    navigator.clipboard?.writeText(body);
+    $("copy").textContent = "Copied";
+  };
+  /* THE BLUR IS CSS ON AN ANCESTOR, so it covers the notebook too when the
+     warm-ups park it here — a pad with one sentence left uncrossed is the
+     answer as surely as the reveal line is. */
+  const hush = $("hush");
+  const peek = () => {
+    const on = $("doneArea").classList.toggle("hush");
+    hush.textContent = on ? "Tap to see their usual" : "Hide it again";
+    hush.className = on ? "peek" : "btn-quiet";
+    hush.setAttribute("aria-pressed", String(on));
+  };
+  if (hush) {
+    hush.onclick = peek;
+    /* THE BLURRED LINE IS ITS OWN BUTTON TOO. The caption says what to do, but
+       the thing a person reaches for is the thing they cannot read — the same
+       mistake the customer silhouette made, where the label was gated and the
+       control was not. Here both are live and both say the same thing. */
+    const line = $("doneBody").querySelector(".reveal");
+    if (line) {
+      line.style.cursor = "pointer";
+      line.onclick = () => { if ($("doneArea").classList.contains("hush")) peek(); };
+    }
+  }
   /* SENDS THEM THE SETTER'S SCREEN, not a puzzle — they pick a usual on their
      own phone and send one back. It is the only share in the game that needs the
      other person to open it before anything exists, which is exactly why it is
